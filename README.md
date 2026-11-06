@@ -25,7 +25,7 @@ Other keyboards do not appear in the device picker.
 
 ## Usage
 
-1. Download `index.html` and open it in Chrome or Edge.
+1. Download `zenith-stug.html` and open it in Chrome or Edge.
 2. Select **Klavyeyi bağla ve oku** (connect and read).
 3. Choose the keyboard in the browser's device window.
 
