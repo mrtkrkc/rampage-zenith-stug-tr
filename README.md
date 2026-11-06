@@ -4,6 +4,8 @@ An unofficial, browser-based configurator for the Rampage Zenith Stug TR magneti
 
 > This is an independent project. It is not affiliated with, endorsed by, or supported by Rampage or the keyboard's manufacturer. Use it at your own risk.
 
+**[Download zenith-stug.html](https://github.com/mrtkrkc/rampage-zenith-stug-tr/releases/latest/download/zenith-stug.html)**
+
 ## Features
 
 - **Lighting:** on/off, brightness, speed, 20 effects, preset colors, and one custom color
@@ -25,7 +27,7 @@ Other keyboards do not appear in the device picker.
 
 ## Usage
 
-1. Download `zenith-stug.html` and open it in Chrome or Edge.
+1. [Download `zenith-stug.html`](https://github.com/mrtkrkc/rampage-zenith-stug-tr/releases/latest/download/zenith-stug.html) and open it in Chrome or Edge.
 2. Select **Klavyeyi bağla ve oku** (connect and read).
 3. Choose the keyboard in the browser's device window.
 
