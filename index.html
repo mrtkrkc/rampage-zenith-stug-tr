@@ -1,0 +1,2236 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stug Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --hull:#2b2f31; --hull-deep:#1c1f20; --plate:#373c3e; --steel:#676d6f; --chalk:#e8e6df; --dust:#a9aca8;
+    --brass:#f2b90f; --brass-ink:#241b00; --fault:#ff9a76; --good:#a8d98a; --line:#4b5052;
+    --font:"Saira Semi Condensed","Segoe UI",system-ui,sans-serif;
+  }
+  * { box-sizing:border-box; }
+  html { background:var(--hull-deep); }
+  body { margin:0; min-height:100vh; background:var(--hull-deep); color:var(--chalk); font:400 1rem/1.5 var(--font); }
+  button { font:inherit; }
+  [hidden] { display:none !important; }
+  :focus-visible { outline:3px solid var(--brass); outline-offset:3px; }
+
+  .shell { max-width:1120px; margin:0 auto; padding:28px clamp(16px,4vw,40px) 64px; }
+  header { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:16px 32px; margin-bottom:28px; }
+  h1 { margin:0; font-size:clamp(2.1rem,6vw,3.6rem); line-height:1; font-weight:700; letter-spacing:-.01em; }
+  .tagline { margin:8px 0 0; color:var(--dust); max-width:56ch; }
+  .actions { display:flex; flex-wrap:wrap; gap:10px; }
+  .btn { min-height:46px; padding:9px 20px; border:1px solid var(--steel); border-radius:3px; background:transparent; color:var(--chalk); font-weight:600; cursor:pointer; }
+  .btn:hover:not(:disabled) { background:var(--plate); }
+  .btn.main { background:var(--brass); border-color:var(--brass); color:var(--brass-ink); }
+  .btn.main:hover:not(:disabled) { background:#ffcb2e; }
+  .btn:disabled { opacity:.55; cursor:default; }
+
+  /* Klavye */
+  .deck { container-type:inline-size; }
+  .board { --u:calc((100cqw - 3.4cqw) / 16); padding:1.7cqw; border-radius:1.3cqw 1.3cqw 1.8cqw 1.8cqw; background:linear-gradient(#34383a,#222527 70%); box-shadow:inset 0 1px 0 #55595b,0 2.6cqw 4cqw -2cqw #000; }
+  .row { display:flex; height:var(--u); }
+  .key, .gap { flex:var(--w) 0 0; min-width:0; }
+  .key { position:relative; padding:.16cqw; }
+  .cap { display:flex; align-items:flex-start; justify-content:flex-start; width:100%; height:100%; padding:.5cqw .6cqw; border-radius:.55cqw; background:linear-gradient(#60666a,#4c5154); box-shadow:inset 0 .08cqw 0 #7d8386,inset 0 -.32cqw 0 #363a3c,0 0 var(--glow,0) var(--spread,0) var(--c,transparent); color:#eceae2; font-size:1.18cqw; font-weight:500; line-height:1.1; white-space:nowrap; overflow:hidden; transition:box-shadow .35s ease; transition-delay:var(--d,0s); }
+  .key.dark .cap { background:linear-gradient(#303436,#25282a); box-shadow:inset 0 .08cqw 0 #4a4e50,inset 0 -.32cqw 0 #18191a,0 0 var(--glow,0) var(--spread,0) var(--c,transparent); }
+  .key.brass .cap { background:linear-gradient(#ffc823,#dca607); box-shadow:inset 0 .08cqw 0 #ffe27f,inset 0 -.32cqw 0 #9a7400,0 0 var(--glow,0) var(--spread,0) var(--c,transparent); color:var(--brass-ink); }
+  .board.lit .cap { --glow:1.25cqw; --spread:.1cqw; }
+  .knob { width:82%; aspect-ratio:1; margin:8% auto 0; border-radius:50%; background:repeating-conic-gradient(#3f4345 0 5deg,#26292b 5deg 10deg); box-shadow:inset 0 0 0 .5cqw #2c2f31,0 .25cqw .5cqw #000; }
+  .legend { margin:10px 0 0; color:var(--dust); font-size:.92rem; }
+
+  /* Okumalar */
+  .grid { display:grid; grid-template-columns:minmax(0,5fr) minmax(0,4fr); gap:0 clamp(24px,5vw,64px); margin-top:34px; }
+  h2 { margin:0 0 10px; font-size:1.3rem; font-weight:600; }
+  section { padding:22px 0; border-top:1px solid var(--line); min-width:0; }
+  .rates { display:grid; grid-template-columns:repeat(auto-fit,minmax(74px,1fr)); gap:4px; }
+  .rate { padding:12px 6px; border:0; background:var(--hull); color:var(--steel); text-align:center; font-weight:600; border-radius:2px; }
+  .rate.ok:not(:disabled) { cursor:pointer; }
+  .rate.ok:hover:not(:disabled) { background:var(--steel); }
+  .rate.now:disabled { opacity:1; }
+  .rate.ok { color:var(--chalk); background:var(--plate); }
+  .rate.now { color:var(--brass-ink); background:var(--brass); }
+  .hint { margin:10px 0 0; color:var(--dust); font-size:.95rem; }
+  .custom { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:14px; }
+  input[type=color] { width:46px; height:46px; padding:2px; border:1px solid var(--steel); border-radius:2px; background:var(--hull); cursor:pointer; }
+  .key { cursor:pointer; }
+  .key.selected .cap { outline:2px solid var(--chalk); outline-offset:.05cqw; }
+  .key.mapped .cap::after { content:""; position:absolute; right:.55cqw; top:.55cqw; width:.7cqw; height:.7cqw; border-radius:50%; background:var(--brass); box-shadow:0 0 0 .12cqw var(--hull-deep); }
+  .assigned { position:absolute; left:.6cqw; bottom:.65cqw; color:var(--brass); font-size:1cqw; font-weight:700; line-height:1; }
+  .key.brass .assigned { color:var(--brass-ink); }
+  #keyMenu { position:absolute; z-index:10; width:230px; max-height:340px; overflow-y:auto; padding:6px; background:var(--plate); border:1px solid var(--steel); border-radius:3px; box-shadow:0 12px 32px #000; }
+  #keyMenu[hidden] { display:none; }
+  #keyMenu h3 { margin:10px 8px 4px; color:var(--dust); font-size:.85rem; font-weight:500; }
+  #keyMenu .title { margin:6px 8px 8px; font-weight:600; }
+  #keyMenu button { display:block; width:100%; padding:7px 8px; border:0; border-radius:2px; background:transparent; color:var(--chalk); text-align:left; font-weight:500; cursor:pointer; }
+  #keyMenu button:hover, #keyMenu button:focus-visible { background:var(--steel); }
+  #keyMenu button.current { background:var(--brass); color:var(--brass-ink); font-weight:700; }
+  #keyMenu button.factory { color:var(--brass); font-weight:700; }
+  #keyMenu p { margin:6px 8px; color:var(--dust); }
+  .macro-slots { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:4px; }
+  .macro-slot { display:flex; gap:8px; align-items:baseline; min-width:0; padding:9px 10px; border:0; border-radius:2px; background:var(--plate); color:var(--chalk); text-align:left; cursor:pointer; }
+  .macro-slot b { flex:none; }
+  .macro-slot span { overflow:hidden; color:var(--dust); font-size:.92rem; text-overflow:ellipsis; white-space:nowrap; }
+  .macro-slot.filled { box-shadow:inset 3px 0 0 var(--brass); }
+  .macro-slot.filled span { color:var(--chalk); }
+  .macro-slot:disabled { cursor:default; opacity:.65; }
+  dialog#macroDialog { width:min(720px,calc(100vw - 24px)); max-height:calc(100vh - 24px); padding:0; border:1px solid var(--steel); border-radius:4px; background:var(--hull-deep); color:var(--chalk); }
+  dialog#macroDialog::backdrop { background:rgba(0,0,0,.72); }
+  .macro-form { display:flex; flex-direction:column; gap:20px; padding:22px; }
+  .macro-head { display:flex; gap:12px; align-items:center; }
+  .macro-head b { font-size:1.5rem; color:var(--brass); }
+  .macro-head input { flex:1; min-width:0; min-height:46px; padding:6px 10px; border:1px solid var(--steel); border-radius:3px; background:var(--plate); color:var(--chalk); font:inherit; font-size:1.15rem; font-weight:600; }
+  .macro-types { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+  .macro-type { padding:12px; border:1px solid var(--line); border-radius:3px; background:var(--hull); color:var(--chalk); text-align:left; cursor:pointer; }
+  .macro-type strong { display:block; font-weight:600; }
+  .macro-type small { display:block; margin-top:3px; color:var(--dust); font-size:.86rem; line-height:1.3; }
+  .macro-type[aria-pressed=true] { border-color:var(--brass); background:var(--brass); color:var(--brass-ink); }
+  .macro-type[aria-pressed=true] small { color:var(--brass-ink); }
+  .macro-type:focus-visible { outline-color:var(--chalk); }
+  .macro-row { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; color:var(--dust); }
+  .macro-row label { display:flex; gap:8px; align-items:center; }
+  .macro-row input[type=number], .step-delay { width:84px; min-height:38px; padding:4px 8px; border:1px solid var(--steel); border-radius:3px; background:var(--plate); color:var(--chalk); font:inherit; }
+  .macro-row input[type=checkbox] { width:18px; height:18px; accent-color:var(--brass); }
+  .macro-empty { padding:24px; background:var(--hull); color:var(--dust); text-align:center; }
+  .macro-list { max-height:300px; margin:0; padding:0; overflow-y:auto; list-style:none; background:var(--hull); }
+  .macro-list li { display:grid; grid-template-columns:2.2em 1.6em minmax(0,1fr) auto 2.4em; gap:8px; align-items:center; padding:5px 10px; border-top:1px solid var(--hull-deep); }
+  .macro-list li:first-child { border-top:0; }
+  .macro-list .num { color:var(--dust); font-size:.88rem; }
+  .macro-list .dir { font-weight:700; }
+  .macro-list .dir.down { color:var(--brass); }
+  .macro-list .key { min-width:0; cursor:default; font-weight:600; }
+  .macro-list .ms { display:flex; gap:5px; align-items:center; color:var(--dust); }
+  .step-delete { padding:4px; border:0; background:transparent; color:var(--dust); cursor:pointer; }
+  .step-delete:hover { color:var(--fault); }
+  #macroError { margin:0; color:#ffd9cb; }
+  .macro-actions { display:flex; flex-wrap:wrap; gap:10px; }
+  .macro-actions .end { margin-left:auto; }
+  @media (max-width:560px) { .macro-types { grid-template-columns:minmax(0,1fr); } }
+  .recovery { margin:0 0 20px; padding:12px 16px; background:var(--hull); border-left:4px solid var(--brass); }
+  .recovery strong { display:block; color:var(--brass); font-weight:600; }
+  .tabs { display:flex; gap:4px; margin-bottom:22px; border-bottom:1px solid var(--line); }
+  .tab { min-height:44px; padding:8px 18px; border:0; border-bottom:3px solid transparent; background:transparent; color:var(--dust); font-weight:600; cursor:pointer; }
+  .tab[aria-selected=true] { color:var(--chalk); border-bottom-color:var(--brass); }
+  .shortcut-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr)); gap:0 clamp(24px,5vw,56px); margin-bottom:24px; }
+  table { width:100%; border-collapse:collapse; }
+  th, td { padding:7px 0; border-top:1px solid var(--hull); vertical-align:top; text-align:left; }
+  tr:first-child th, tr:first-child td { border-top:0; }
+  th { width:45%; padding-right:14px; color:var(--brass); font-weight:600; }
+  .trigger-form { display:flex; flex-direction:column; gap:16px; max-width:640px; }
+  .trigger-form > label { display:flex; flex-direction:column; gap:4px; color:var(--dust); }
+  .trigger-form select { min-height:46px; padding:8px 10px; border:1px solid var(--steel); border-radius:3px; background:var(--plate); color:var(--chalk); font:inherit; }
+  .trigger-modes { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #triggerApply { align-self:flex-start; }
+  .swatches { display:flex; flex-wrap:wrap; gap:8px; }
+  .swatch { width:46px; height:46px; padding:0; border-radius:2px; background:var(--hull); border:1px solid var(--line); cursor:pointer; }
+  .swatch:disabled { cursor:default; }
+  .swatch.rainbow { background:conic-gradient(#f33,#fd3,#3e5,#3df,#35f,#e3e,#f33); }
+  .swatch.on { outline:3px solid var(--chalk); outline-offset:2px; }
+  dl { margin:0; display:grid; grid-template-columns:auto 1fr; gap:6px 24px; }
+  dt { color:var(--dust); }
+  dd { margin:0; font-weight:500; }
+  .meter { display:inline-block; width:96px; height:8px; margin-right:10px; vertical-align:middle; background:var(--plate); }
+  .meter span { display:block; height:100%; background:var(--brass); }
+  .field { margin-top:16px; }
+  .field label, .field > span { display:flex; justify-content:space-between; color:var(--dust); margin-bottom:4px; }
+  .field output { color:var(--chalk); font-weight:600; }
+  input[type=range] { width:100%; accent-color:var(--brass); }
+  .effects { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:4px; }
+  .effect { display:flex; gap:8px; align-items:baseline; padding:8px 10px; border:0; text-align:left; line-height:1.25; border-radius:2px; background:var(--plate); color:var(--chalk); font-weight:600; cursor:pointer; }
+  .effect b { flex:none; min-width:2.1em; font-weight:700; }
+  .effect span { font-weight:500; }
+  .effect[aria-pressed=true] { background:var(--brass); color:var(--brass-ink); }
+  .effect:disabled { cursor:default; opacity:.65; }
+  .board.moving .cap { transition:none; }
+  #status { margin:0; padding:12px 16px; background:var(--hull); border-left:4px solid var(--steel); }
+  #status.ok { border-color:var(--good); }
+  #status.bad { border-color:var(--fault); color:#ffd9cb; }
+  details { margin-top:14px; color:var(--dust); }
+  summary { cursor:pointer; }
+  pre { margin:10px 0 0; padding:12px; background:var(--hull); color:var(--chalk); white-space:pre-wrap; overflow-wrap:anywhere; font:inherit; font-size:.86rem; }
+  .fine { margin:30px 0 0; color:var(--dust); font-size:.9rem; max-width:70ch; }
+  @media (max-width:760px) { .grid { grid-template-columns:minmax(0,1fr); } .cap { font-size:0; } }
+  @media (prefers-reduced-motion:reduce) { .cap { transition:none; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div>
+      <h1 id="name">Zenith Stug TR</h1>
+      <p class="tagline">Klavyenin ışık ve polling rate ayarlarını değiştirir. Klavyeye yalnızca bir ayarı değiştirince komut gider.</p>
+    </div>
+    <div class="actions">
+      <button class="btn main" id="run">Klavyeyi bağla ve oku</button>
+      <button class="btn" id="copy" disabled>Sonucu kopyala</button>
+    </div>
+  </header>
+
+  <aside class="recovery">
+    <strong>Bir şey ters giderse: FN + Caps Lock tuşlarına 3 saniye basılı tut.</strong>
+    Klavye fabrika ayarlarına döner. Işık, tuş atama ve tetik ayarların sıfırlanır, polling rate 8 kHz olur.
+  </aside>
+
+  <div class="tabs" role="tablist" aria-label="Panel bölümleri">
+    <button class="tab" role="tab" id="tabSettings" aria-controls="panelSettings" aria-selected="true">Ayarlar</button>
+    <button class="tab" role="tab" id="tabMacro" aria-controls="panelMacro" aria-selected="false" tabindex="-1">Makro</button>
+    <button class="tab" role="tab" id="tabTrigger" aria-controls="panelTrigger" aria-selected="false" tabindex="-1">Tetik</button>
+    <button class="tab" role="tab" id="tabKeyColor" aria-controls="panelKeyColor" aria-selected="false" tabindex="-1">Tuş rengi</button>
+    <button class="tab" role="tab" id="tabShortcuts" aria-controls="panelShortcuts" aria-selected="false" tabindex="-1">Kısayollar</button>
+  </div>
+
+  <div id="panelShortcuts" role="tabpanel" aria-labelledby="tabShortcuts" hidden>
+    <div class="shortcut-grid">
+      <section><h2>Önemli kısayollar</h2><table><tbody><tr><th scope="row">FN + Caps Lock (3 sn)</th><td>Fabrika ayarlarına döndürür</td></tr><tr><th scope="row">FN + Esc</th><td>F tuşu modunu değiştirir, 3 kez yanıp sönerek onaylar</td></tr><tr><th scope="row">FN + Tab</th><td>Beyaz ışığı açar veya kapatır</td></tr><tr><th scope="row">FN + Sol Win</th><td>Windows tuşunu kilitler (yalnızca Windows)</td></tr></tbody></table></section>
+      <section><h2>Işık</h2><table><tbody><tr><th scope="row">FN + Enter</th><td>Ana ışık rengini değiştirir</td></tr><tr><th scope="row">FN + Backspace</th><td>Klavye ışığını açar veya kapatır</td></tr><tr><th scope="row">FN + ↑</th><td>Parlaklığı artırır</td></tr><tr><th scope="row">FN + ↓</th><td>Parlaklığı azaltır</td></tr><tr><th scope="row">FN + ←</th><td>Efekt hızını azaltır</td></tr><tr><th scope="row">FN + →</th><td>Efekt hızını artırır</td></tr></tbody></table><p class="hint">En düşük veya en yüksek seviyeye gelince tüm tuşlar 3 kez beyaz yanıp söner. Efekt değiştirme kısayolunun tuşu kitapçık fotoğrafında okunamadı.</p></section>
+      <section><h2>Windows (FN + F tuşları)</h2><table><tbody><tr><th scope="row">FN + F1</th><td>Ekran parlaklığını azaltır</td></tr><tr><th scope="row">FN + F2</th><td>Ekran parlaklığını artırır</td></tr><tr><th scope="row">FN + F3</th><td>Görev görünümü (Win + Tab)</td></tr><tr><th scope="row">FN + F4</th><td>Hesap makinesi</td></tr><tr><th scope="row">FN + F5</th><td>Ana sayfa</td></tr><tr><th scope="row">FN + F6</th><td>Arama</td></tr><tr><th scope="row">FN + F7</th><td>Önceki parça</td></tr><tr><th scope="row">FN + F8</th><td>Oynat / duraklat</td></tr><tr><th scope="row">FN + F9</th><td>Sonraki parça</td></tr><tr><th scope="row">FN + F10</th><td>Sessiz</td></tr><tr><th scope="row">FN + F11</th><td>Sesi azaltır</td></tr><tr><th scope="row">FN + F12</th><td>Sesi artırır</td></tr></tbody></table></section>
+      <section><h2>macOS (FN + F tuşları)</h2><table><tbody><tr><th scope="row">FN + F1</th><td>Ekran parlaklığını azaltır</td></tr><tr><th scope="row">FN + F2</th><td>Ekran parlaklığını artırır</td></tr><tr><th scope="row">FN + F3</th><td>Mission Control</td></tr><tr><th scope="row">FN + F4</th><td>Siri</td></tr><tr><th scope="row">FN + F5</th><td>Uygulama pencerelerini gösterir</td></tr><tr><th scope="row">FN + F6</th><td>Spotlight araması</td></tr><tr><th scope="row">FN + F7</th><td>Önceki parça</td></tr><tr><th scope="row">FN + F8</th><td>Oynat / duraklat</td></tr><tr><th scope="row">FN + F9</th><td>Sonraki parça</td></tr><tr><th scope="row">FN + F10</th><td>Sessiz</td></tr><tr><th scope="row">FN + F11</th><td>Sesi azaltır</td></tr><tr><th scope="row">FN + F12</th><td>Sesi artırır</td></tr></tbody></table></section>
+      <section><h2>Düzenleme</h2><table><tbody><tr><th scope="row">FN + Del</th><td>Print Screen</td></tr><tr><th scope="row">FN + Home</th><td>Insert</td></tr><tr><th scope="row">FN + PgUp</th><td>End</td></tr><tr><th scope="row">FN + PgDn</th><td>Scroll Lock</td></tr></tbody></table></section>
+      <section><h2>Ses düğmesi</h2><table><tbody><tr><th scope="row">Düğmeyi aşağı çevir</th><td>Sesi azaltır</td></tr><tr><th scope="row">Düğmeyi yukarı çevir</th><td>Sesi artırır</td></tr><tr><th scope="row">Düğmeye bas</th><td>Sessiz</td></tr></tbody></table></section>
+      <section><h2>Mod düğmesi</h2><table><tbody><tr><th scope="row">En sol</th><td>E-spor</td></tr><tr><th scope="row">Orta</th><td>Oyun</td></tr><tr><th scope="row">En sağ</th><td>Ofis</td></tr></tbody></table><p class="hint">Klavyenin arkasındaki düğme. Geçiş başarılı olunca ışık 3 kez yanıp söner.</p></section>
+      <section><h2>macOS tuş karşılıkları</h2><table><tbody><tr><th scope="row">Ctrl</th><td>Control</td></tr><tr><th scope="row">Win</th><td>Option</td></tr><tr><th scope="row">Alt</th><td>Command</td></tr></tbody></table></section>
+    </div>
+  </div>
+
+  <div id="panelMacro" role="tabpanel" aria-labelledby="tabMacro" hidden>
+    <div id="macroDeckSlot"></div>
+    <p class="legend">Bir makroyu tuşa atamak için çizimde tuşa tıkla, listeden seç.</p>
+      <section>
+        <h2>Makro</h2>
+        <div class="macro-slots" id="macroSlots"></div>
+        <p class="hint" id="macroHint">Klavyeyi bağladığında makrolar da okunur.</p>
+      </section>
+  </div>
+
+  <div id="panelKeyColor" role="tabpanel" aria-labelledby="tabKeyColor" hidden>
+    <div id="keyColorDeckSlot"></div>
+    <p class="legend" id="keyColorLegend">Klavyeyi bağladığında tuş renkleri de okunur.</p>
+    <section>
+      <h2>Tuş başına renk</h2>
+      <p class="hint">Bir renk seç, çizimde tuşlara tıkla. Aynı renkteki tuşa yeniden tıklarsan rengi kalkar.</p>
+      <div class="custom">
+        <input type="color" id="paintColor" value="#ff0000" aria-label="Boya rengi" disabled>
+        <button class="btn" id="paintAll" disabled>Tüm tuşları boya</button>
+        <button class="btn" id="paintClear" disabled>Temizle</button>
+        <button class="btn main" id="paintSave" disabled>Renkleri kaydet</button>
+      </div>
+      <p class="hint" id="paintHint">Renkler bu tarayıcıda profile göre saklanır. Kaydedince L20 açılır; başka efekte geçince renkler kapanır, L20'ye dönünce geri gelir.</p>
+    </section>
+  </div>
+
+  <div id="panelTrigger" role="tabpanel" aria-labelledby="tabTrigger" hidden>
+    <div id="triggerDeckSlot"></div>
+    <p class="legend" id="triggerLegend">Tetik ayarlarını okuduktan sonra çizimden tuş seçebilirsin.</p>
+    <section>
+      <h2>Tetik ve Rapid Trigger</h2>
+      <p class="hint" id="triggerHint">Klavyeyi bağlayıp tetik ayarlarını oku. Okumak hiçbir şeyi değiştirmez.</p>
+      <div class="custom"><button class="btn" id="triggerRead" disabled>Tetik ayarlarını oku</button></div>
+    </section>
+    <section id="triggerEditor" hidden>
+      <h2>Ayarları değiştir</h2>
+      <div class="trigger-form">
+        <label>Hangi tuşlar
+          <select id="triggerTarget"></select>
+        </label>
+        <div class="macro-types trigger-modes" role="group" aria-label="Çalışma modu">
+          <button class="macro-type" data-trigger-mode="0"><strong>Normal</strong><small>Tuş sabit bir noktada algılanır.</small></button>
+          <button class="macro-type" data-trigger-mode="1"><strong>Rapid Trigger</strong><small>Tuş hareket yönüne göre anında basılır ve bırakılır.</small></button>
+        </div>
+        <div id="fieldsNormal" class="field">
+          <label for="normalPress">Tetik noktası <output id="normalPressOut">-</output></label>
+          <input type="range" id="normalPress" min="0.1" max="3.5" step="0.01">
+        </div>
+        <div id="fieldsRapid">
+          <div class="field">
+            <label for="rtFirstTouch">İlk temas <output id="rtFirstTouchOut">-</output></label>
+            <input type="range" id="rtFirstTouch" min="0.1" max="3.5" step="0.01">
+          </div>
+          <div class="field">
+            <label for="rtPress">Basma mesafesi <output id="rtPressOut">-</output></label>
+            <input type="range" id="rtPress" min="0.01" max="2" step="0.01">
+          </div>
+          <div class="field">
+            <label for="rtRelease">Bırakma mesafesi <output id="rtReleaseOut">-</output></label>
+            <input type="range" id="rtRelease" min="0.01" max="2" step="0.01">
+          </div>
+          <p class="hint" id="rtWarning" hidden>0,04 mm altı tuşların kendi kendine tetiklenmesine yol açabilir.</p>
+        </div>
+        <div>
+          <div class="field">
+            <label for="pressDead">Basma ölü bölgesi <output id="pressDeadOut">-</output></label>
+            <input type="range" id="pressDead" min="0" max="1" step="0.01">
+          </div>
+          <div class="field">
+            <label for="releaseDead">Bırakma ölü bölgesi <output id="releaseDeadOut">-</output></label>
+            <input type="range" id="releaseDead" min="0" max="1" step="0.01">
+          </div>
+          <p class="hint">Ölü bölge, tuşun üstünde ve altında yok sayılan mesafedir. Büyüdükçe yanlış algılama azalır, tepki biraz gecikebilir.</p>
+        </div>
+        <div class="custom">
+          <button class="btn main" id="triggerApply">Ayarları uygula</button>
+          <button class="btn" id="triggerFactory">Fabrika değerlerine dön</button>
+        </div>
+        <p class="hint" id="triggerFactoryHint"></p>
+        <p class="hint">Değişiklik etkin profile uygulanır. Fn ve Caps Lock korunur, bu yüzden listede yok.</p>
+      </div>
+    </section>
+    <section>
+      <h2>Mevcut ayarlar</h2>
+      <div id="triggerResult"><p class="hint">Henüz okunmadı.</p></div>
+    </section>
+  </div>
+
+  <div id="panelSettings" role="tabpanel" aria-labelledby="tabSettings">
+  <div id="settingsDeckSlot"><div class="deck" id="deck"><div class="board" id="board"></div></div></div>
+  <p class="legend" id="legend">Bağlandığında tuşlar, klavyenin kayıtlı renk paletiyle yanar.</p>
+
+  <div class="grid">
+    <div>
+      <section>
+        <h2>Profil</h2>
+        <div class="rates" id="profiles"></div>
+        <p class="hint" id="profileHint">Henüz okunmadı.</p>
+      </section>
+      <section>
+        <h2>Polling rate</h2>
+        <div class="rates" id="rates"></div>
+        <p class="hint" id="rateHint">Henüz okunmadı.</p>
+      </section>
+      <section>
+        <h2>Tuş atama</h2>
+        <p class="hint" id="keyHint">Klavyeyi bağladığında çizimdeki tuşlara tıklayarak görevlerini değiştirebilirsin.</p>
+        <div class="custom">
+          <button class="btn" id="resetAllKeys" disabled>Tüm tuşları geri al</button>
+        </div>
+        <p class="hint">Son basılan tuş: <strong id="lastKey">-</strong></p>
+      </section>
+    </div>
+    <div>
+      <section>
+        <h2>Işık</h2>
+        <button class="btn" id="power" disabled>Işığı kapat</button>
+        <div class="field light-color">
+          <span>Renk</span>
+        <div class="swatches" id="swatches"></div>
+        <p class="hint" id="paletteHint">Henüz okunmadı.</p>
+        <div class="custom">
+          <input type="color" id="customColor" value="#f2b90f" aria-label="Kendi rengin" disabled>
+          <button class="btn" id="applyColor" disabled>Rengi kaydet ve seç</button>
+        </div>
+        <p class="hint">Seçtiğin renk, son kutudaki rengin yerine kaydedilir. FN + Caps Lock fabrika rengine döndürür.</p>
+        </div>
+        <div class="field">
+          <label for="luminance">Parlaklık <output id="luminanceOut">-</output></label>
+          <input type="range" id="luminance" min="0" max="100" step="1" value="0" disabled>
+        </div>
+        <div class="field">
+          <label for="speed">Hız <output id="speedOut">-</output></label>
+          <input type="range" id="speed" min="0" max="100" step="1" value="0" disabled>
+        </div>
+        <div class="field">
+          <span>Efekt</span>
+          <div class="effects" id="effects"></div>
+        </div>
+      </section>
+      <section>
+        <h2>Cihaz</h2>
+        <dl id="device"><dt>Durum</dt><dd>Bağlı değil</dd></dl>
+      </section>
+    </div>
+  </div>
+
+  </div>
+
+  <p id="status" role="status">Chrome veya Edge ile aç, düğmeye bas ve pencereden klavyeni seç.</p>
+  <details>
+    <summary>Ham yanıtlar</summary>
+    <pre id="raw">Henüz yanıt yok.</pre>
+  </details>
+  <dialog id="macroDialog" aria-labelledby="macroSlotName">
+    <div class="macro-form">
+      <div class="macro-head">
+        <b id="macroSlotName">M1</b>
+        <input id="macroName" maxlength="24" placeholder="Makro adı" aria-label="Makro adı">
+      </div>
+      <div class="macro-types" role="group" aria-label="Çalışma şekli">
+        <button class="macro-type" data-type="count"><strong>Sayılı tekrar</strong><small>Basınca seçtiğin sayıda çalışır.</small></button>
+        <button class="macro-type" data-type="hold"><strong>Basılı tuttukça</strong><small>Tuşu bırakınca hemen durur.</small></button>
+        <button class="macro-type" data-type="toggle"><strong>Aç / kapa</strong><small>Bir basış başlatır, ikinci basış durdurur.</small></button>
+      </div>
+      <div class="macro-row">
+        <label id="macroRepeatLabel">Tekrar <input type="number" id="macroRepeat" min="1" max="9999" value="1"></label>
+        <label><input type="checkbox" id="macroStandard"> Standart gecikme</label>
+        <label>Gecikme <input type="number" id="macroStandardMs" min="1" max="32767" value="50" aria-label="Standart gecikme"> ms</label>
+      </div>
+      <div id="macroStepsWrap"></div>
+      <p id="macroError" hidden></p>
+      <div class="macro-actions">
+        <button class="btn" id="macroRecord">Kaydı başlat</button>
+        <button class="btn" id="macroAppend">Sonuna ekle</button>
+        <button class="btn" id="macroClear">Sil</button>
+        <button class="btn end" id="macroCancel">Vazgeç</button>
+        <button class="btn main" id="macroSave">Kaydet</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div id="keyMenu" hidden></div>
+  <p class="fine">Rampage veya üreticisiyle bağlantısı olmayan, kişisel kullanım için yapılmış bir araçtır. Çizimdeki efektler anlatımlara göre yapılmış temsilî canlandırmalardır, klavyeye komut göndermez.</p>
+</div>
+
+<script>
+  const FILTER = { vendorId: 0x1CA6, productId: 0x1C18, usagePage: 0xFFB0, usage: 0x0001 };
+  const RATES = [[0,'8 kHz'],[1,'4 kHz'],[2,'2 kHz'],[3,'1 kHz']];
+  const RATE_NAMES = { 4: '500 Hz', 5: '250 Hz', 6: '125 Hz' };
+
+  // Bu sayfanın gönderebileceği komutların tamamı: yalnızca okuma.
+  const READ_COMMANDS = Object.freeze({
+    protocol: Object.freeze([0x01, 0x01]),
+    info: Object.freeze([0x01, 0x02]),
+    rateList: Object.freeze([0x02, 0x05, 0x00]),
+    rate: Object.freeze([0x02, 0x05, 0x01]),
+    lightBase: Object.freeze([0x05, 0x01, 0x00, 0x00]),
+    palette: Object.freeze([0x05, 0x01, 0x00, 0x01]),
+    profile: Object.freeze([0x02, 0x03, 0x01])
+  });
+
+  // Bu sayfanın klavyeye yazabildiği iki komut vardır: polling rate ve ışık temel ayarları.
+  // Işıkta yalnızca istenen alan değişir, diğerleri klavyeden yeni okunan değerden gelir.
+  const LIGHT_FIELDS = Object.freeze({
+    open: { index: 4, min: 0, max: 1 },
+    mode: { index: 5, min: 1, max: 20 },
+    luminance: { index: 6, min: 0, max: 100 },
+    speed: { index: 7, min: 0, max: 100 },
+    color: { index: 9, min: 0, max: 7 }
+  });
+
+  function buildLightWrite(base, field, value) {
+    const spec = LIGHT_FIELDS[field];
+    if (!spec || !Number.isInteger(value) || value < spec.min || value > spec.max) throw new Error('İzin verilmeyen ayar değeri');
+    const packet = [0x05, 0x02, 0x00, 0x00, base[4], base[5], base[6], base[7], base[8], base[9]];
+    packet[spec.index] = value;
+    return Object.freeze(packet);
+  }
+
+  const PROFILES = ['Ofis', 'Oyun', 'E-spor', 'Özel'];
+  const PROFILE_ORDER = [2, 1, 0, 3]; // Düğme konumuna göre soldan sağa
+  const CUSTOM_SLOT = 7;
+
+  // Paletin yalnızca son kutusu değişir; diğer renkler klavyeden okunan değerle aynı kalır.
+  function buildPaletteWrite(palette, rgb) {
+    if (!rgb.every(v => Number.isInteger(v) && v >= 0 && v <= 255)) throw new Error('Geçersiz renk');
+    const packet = [0x05, 0x02, 0x00, 0x01];
+    for (let i = 0; i < 8; i++) packet.push(palette[4 + 4 * i], palette[5 + 4 * i], palette[6 + 4 * i], palette[7 + 4 * i]);
+    const at = 4 + 4 * CUSTOM_SLOT;
+    packet[at] = rgb[2];
+    packet[at + 1] = rgb[1];
+    packet[at + 2] = rgb[0];
+    return Object.freeze(packet);
+  }
+
+  // Fabrika tuş haritası: klavyenden okunan değerler (ana katman).
+  const FACTORY_MAP = [
+    [0x29,0x3a,0x3b,0x3c,0x3d,0x3e,0x3f,0x40,0x41,0x42,0x43,0x44,0x45,0x4c,0],
+    [0x35,0x1e,0x1f,0x20,0x21,0x22,0x23,0x24,0x25,0x26,0x27,0x2d,0x2e,0x2a,0x4a],
+    [0x2b,0x14,0x1a,0x08,0x15,0x17,0x1c,0x18,0x0c,0x12,0x13,0x2f,0x30,0,0x4b],
+    [0x39,0x04,0x16,0x07,0x09,0x0a,0x0b,0x0d,0x0e,0x0f,0x33,0x34,0x31,0x28,0x4e],
+    [0xe1,0x64,0x1d,0x1b,0x06,0x19,0x05,0x11,0x10,0x36,0x37,0x38,0xe5,0x52,0],
+    [0xe0,0xe3,0xe2,0,0,0,0x2c,0,0,0,0xe6,0xf101,0x50,0x51,0x4f]
+  ];
+  // Çizimdeki tuşların klavye içindeki [satır, sütun] karşılıkları. Enter iki parçadır, aynı konumdur.
+  const KEY_POSITIONS = [
+    [[0,0],[0,1],[0,2],[0,3],[0,4],[0,5],[0,6],[0,7],[0,8],[0,9],[0,10],[0,11],[0,12],[0,13],null],
+    [[1,0],[1,1],[1,2],[1,3],[1,4],[1,5],[1,6],[1,7],[1,8],[1,9],[1,10],[1,11],[1,12],[1,13],[1,14]],
+    [[2,0],[2,1],[2,2],[2,3],[2,4],[2,5],[2,6],[2,7],[2,8],[2,9],[2,10],[2,11],[2,12],[3,13],[2,14]],
+    [[3,0],[3,1],[3,2],[3,3],[3,4],[3,5],[3,6],[3,7],[3,8],[3,9],[3,10],[3,11],[3,12],[3,13],[3,14]],
+    [[4,0],[4,1],[4,2],[4,3],[4,4],[4,5],[4,6],[4,7],[4,8],[4,9],[4,10],[4,11],[4,12],[4,13]],
+    [[5,0],[5,1],[5,2],[5,6],[5,10],[5,11],[5,12],[5,13],[5,14]]
+  ];
+  const LOCKED_KEYS = Object.freeze(['3,0', '5,11']); // Caps Lock ve Fn: reset kombinasyonu korunur.
+  const MAPPABLE = { 0x39: 'Caps Lock', 0x2c: 'Boşluk', 0x28: 'Enter', 0x4d: 'End', 0x49: 'Insert', 0x46: 'Print Screen', 0x47: 'Scroll Lock', 0x48: 'Pause', 0xe0: 'Sol Ctrl', 0xe1: 'Sol Shift', 0xe2: 'Sol Alt', 0xe3: 'Sol Win', 0xe4: 'Sağ Ctrl', 0xe5: 'Sağ Shift', 0xe6: 'Alt Gr', 0xe7: 'Sağ Win' };
+
+  // Yalnızca ana katmana, kilitli olmayan tuşa ve listedeki koda yazar.
+  function buildKeyWrite(row, col, code) {
+    if (LOCKED_KEYS.includes(row + ',' + col)) throw new Error('Bu tuş değiştirilemez');
+    if (!FACTORY_MAP[row] || !FACTORY_MAP[row][col]) throw new Error('Geçersiz tuş konumu');
+    if (!KEY_LABELS[code]) throw new Error('İzin verilmeyen tuş kodu');
+    return Object.freeze([0x03, 0x04, 0x00, row, col, code & 255, code >> 8]);
+  }
+
+  const MACRO_COUNT = 16;
+  const MACRO_KEY_BASE = 0xf500;
+  const MACRO_ABSOLUTE_MAX = 448;
+  // Klavyedeki modlar: 0 tıkla ve say, 2 yeniden tıklayınca dur, 4 basılı tuttukça.
+  const MACRO_TYPES = Object.freeze({
+    count: { mode: 0 },
+    toggle: { mode: 2, repeat: 9999 },
+    hold: { mode: 4, repeat: 65535 }
+  });
+  const macroTypeOf = mode => mode === 4 || mode === 5 ? 'hold' : mode === 2 || mode === 3 ? 'toggle' : 'count';
+  const macroTypeName = { count: 'Sayılı', hold: 'Basılı', toggle: 'Aç/kapa' };
+
+  function checkMacroId(id) {
+    if (!Number.isInteger(id) || id < 0 || id >= MACRO_COUNT) throw new Error('Geçersiz makro numarası');
+  }
+
+  // Tıkla ve belirtilen sayıda yürüt modu (0) kullanılır.
+  function buildMacroMode(id, actionCount, type, repeat, valid) {
+    checkMacroId(id);
+    if (!Number.isInteger(actionCount) || actionCount < 0 || actionCount > MACRO_ABSOLUTE_MAX) throw new Error('Geçersiz adım sayısı');
+    if (!MACRO_TYPES[type]) throw new Error('Geçersiz çalışma şekli');
+    if (type === 'count' && (!Number.isInteger(repeat) || repeat < 1 || repeat > 9999)) throw new Error('Tekrar sayısı 1-9999 olmalı');
+    const mode = MACRO_TYPES[type].mode;
+    const count = type === 'count' ? repeat : MACRO_TYPES[type].repeat;
+    return Object.freeze([0x07, 0x02, id, valid ? 1 : 0, actionCount & 255, actionCount >> 8, count & 255, count >> 8, mode]);
+  }
+
+  function buildMacroData(id, offset, actions) {
+    checkMacroId(id);
+    if (actions.length < 1 || actions.length > 15) throw new Error('Geçersiz makro paketi');
+    const packet = [0x07, 0x04, id, offset];
+    for (const { code, delay, down } of actions) {
+      if (!Number.isInteger(code) || code < 4 || code > 0xe7) throw new Error('İzin verilmeyen makro tuşu');
+      if (!Number.isInteger(delay) || delay < 1 || delay > 32767) throw new Error('Geçersiz gecikme');
+      packet.push(code, 0, delay & 255, (delay >> 8) | (down ? 0x80 : 0));
+    }
+    return Object.freeze(packet);
+  }
+
+  const parseMacroAction = (bytes, i) => {
+    const code = bytes[i] | bytes[i + 1] << 8;
+    return { code, delay: bytes[i + 2] | (bytes[i + 3] & 0x7f) << 8, down: (bytes[i + 3] & 0x80) !== 0 };
+  };
+
+  function buildRateWrite(value, supported) {
+    if (!Number.isInteger(value) || !supported.includes(value)) throw new Error('Klavyenin desteklemediği polling rate');
+    return Object.freeze([0x02, 0x05, 0x02, value]);
+  }
+
+  const $ = id => document.getElementById(id);
+  const hex = bytes => Array.from(bytes, b => b.toString(16).padStart(2, '0')).join(' ');
+
+  // Tuş düzeni: [etiket, genişlik, stil]. Boş etiket ve "gap" boşluktur.
+  const LAYOUT = [
+    [['Esc',1,'brass'],['gap',.25],['F1',1],['F2',1],['F3',1],['F4',1],['gap',.25],['F5',1,'dark'],['F6',1,'dark'],['F7',1,'dark'],['F8',1,'dark'],['gap',.25],['F9',1],['F10',1],['F11',1],['F12',1],['gap',.25],['Del',1,'dark'],['knob',1]],
+    [['"',1,'dark'],['1',1],['2',1],['3',1],['4',1],['5',1],['6',1],['7',1],['8',1],['9',1],['0',1],['*',1],['-',1],['Backspace',2,'dark'],['Home',1,'dark']],
+    [['Tab',1.5,'dark'],['Q',1],['W',1],['E',1],['R',1],['T',1],['Y',1],['U',1],['I',1],['O',1],['P',1],['Ğ',1],['Ü',1],['Enter',1.5,'brass'],['PgUp',1,'dark']],
+    [['Caps',1.75,'dark'],['A',1],['S',1],['D',1],['F',1],['G',1],['H',1],['J',1],['K',1],['L',1],['Ş',1],['İ',1],[';',1],['',1.25,'brass'],['PgDn',1,'dark']],
+    [['Shift',1.25,'dark'],['<',1],['Z',1],['X',1],['C',1],['V',1],['B',1],['N',1],['M',1],['Ö',1],['Ç',1],['.',1],['Shift',1.75,'dark'],['↑',1,'brass'],['gap',1]],
+    [['Ctrl',1.25,'dark'],['Win',1.25,'dark'],['Alt',1.25,'dark'],['',6.25,'brass'],['Alt Gr',1.25,'dark'],['Fn',1.25,'dark'],['gap',.5],['←',1,'brass'],['↓',1,'brass'],['→',1,'brass']]
+  ];
+
+  const KEY_CODES = [
+    ['Escape','F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12','Delete',''],
+    ['Backquote','Digit1','Digit2','Digit3','Digit4','Digit5','Digit6','Digit7','Digit8','Digit9','Digit0','Minus','Equal','Backspace','Home'],
+    ['Tab','KeyQ','KeyW','KeyE','KeyR','KeyT','KeyY','KeyU','KeyI','KeyO','KeyP','BracketLeft','BracketRight','Enter','PageUp'],
+    ['CapsLock','KeyA','KeyS','KeyD','KeyF','KeyG','KeyH','KeyJ','KeyK','KeyL','Semicolon','Quote','Backslash','Enter','PageDown'],
+    ['ShiftLeft','IntlBackslash','KeyZ','KeyX','KeyC','KeyV','KeyB','KeyN','KeyM','Comma','Period','Slash','ShiftRight','ArrowUp'],
+    ['ControlLeft','MetaLeft','AltLeft','Space','AltRight','','ArrowLeft','ArrowDown','ArrowRight']
+  ];
+
+  const KEY_LABELS = { ...MAPPABLE };
+  const POSITION_LABELS = {};
+
+  function drawBoard() {
+    const board = $('board');
+    LAYOUT.forEach((row, rowIndex) => {
+      const line = document.createElement('div');
+      line.className = 'row';
+      let x = 0;
+      let keyIndex = 0;
+      let positionIndex = 0;
+      for (const [label, width, style] of row) {
+        const el = document.createElement('div');
+        el.style.setProperty('--w', width);
+        if (label === 'gap') {
+          el.className = 'gap';
+        } else {
+          el.className = 'key' + (style ? ' ' + style : '');
+          el.dataset.x = (x + width / 2) / 16;
+          el.dataset.y = (rowIndex + .5) / 6;
+          el.dataset.row = rowIndex;
+          el.dataset.code = KEY_CODES[rowIndex][keyIndex++] || '';
+          const position = KEY_POSITIONS[rowIndex][positionIndex++];
+          if (position) {
+            const id = position.join(',');
+            el.dataset.position = id;
+            const name = label || (id === '3,13' ? 'Enter' : 'Boşluk');
+            if (!POSITION_LABELS[id]) POSITION_LABELS[id] = name;
+            const code = FACTORY_MAP[position[0]][position[1]];
+            if (code < 0xe0 && code !== 0x39 && !KEY_LABELS[code]) KEY_LABELS[code] = name;
+          }
+          el.style.setProperty('--d', ((x / 16) * .7).toFixed(2) + 's');
+          if (label === 'knob') {
+            el.innerHTML = '<div class="knob"></div>';
+          } else {
+            const cap = document.createElement('div');
+            cap.className = 'cap';
+            cap.textContent = label;
+            el.appendChild(cap);
+          }
+        }
+        x += width;
+        line.appendChild(el);
+      }
+      board.appendChild(line);
+    });
+  }
+
+  function drawRates(supported, current) {
+    $('rates').replaceChildren(...RATES.map(([value, name]) => {
+      const el = document.createElement('button');
+      const ok = supported && supported.includes(value);
+      el.className = 'rate' + (ok ? ' ok' : '') + (value === current ? ' now' : '');
+      el.textContent = name;
+      el.dataset.value = value;
+      el.setAttribute('aria-pressed', String(value === current));
+      el.disabled = true;
+      el.addEventListener('click', () => applyRate(value));
+      return el;
+    }));
+  }
+
+  let animation = null;
+  const EFFECT_NAMES = ['Dalga', 'Aşağı akan', 'Ortadan patlama', 'Ortadan yanlara', 'Sağa sola kayan', 'Adsız', 'Nefes', 'Tek tek nefes', 'Git gel', 'Sola giden nabız', 'Sağa giden nabız', 'Yanıp sönme', 'Güçlü yanıp sönme', 'Aşağı akan şeritler', 'Dönen ışık', 'Basılan tuş', 'Basılan yerin çevresi', 'Satır ışını', 'Basınca patlama', 'Özel (tahmin)'];
+  const parseColor = c => c.match(/\d+/g).map(Number);
+
+  const fract = v => v - Math.floor(v);
+  const gauss = (d, w) => Math.exp(-(d * d) / (2 * w * w));
+  const tri = v => 1 - Math.abs(fract(v) * 2 - 1);
+  const hsl = h => {
+    const f = n => {
+      const k = (n + fract(h) * 12) % 12;
+      return Math.round(255 * (.5 - .5 * Math.max(-1, Math.min(k - 3, 9 - k, 1))));
+    };
+    return [f(0), f(8), f(4)];
+  };
+
+  let effectKeys = null;
+  let effect = { mode: 1, rainbow: true, color: [255, 255, 255], speed: 50, luminance: 100 };
+  let presses = [];
+
+  function getEffectKeys() {
+    if (effectKeys) return effectKeys;
+    effectKeys = [...document.querySelectorAll('.key')].map((el, i) => ({
+      el, i, x: Number(el.dataset.x), y: Number(el.dataset.y), row: Number(el.dataset.row),
+      code: el.dataset.code, seed: fract(Math.sin((i + 1) * 12.9898) * 43758.5453),
+      column: fract(Math.sin(Math.floor(Number(el.dataset.x) * 16) * 78.233) * 43758.5453)
+    }));
+    return effectKeys;
+  }
+
+  // Klavye oranı 16:6 olduğundan uzaklıklar tuş birimiyle ölçülür.
+  const distance = (ax, ay, bx, by) => Math.hypot((ax - bx) * 16, (ay - by) * 6) / 16;
+
+  // Her efekt [renk tonu, parlaklık] döndürür; anlatımlara göre yapılmış temsilî hesaplardır.
+  const EFFECTS = {
+    1: (k, t) => [k.x - t, .3 + .7 * tri(k.x - t)],
+    2: (k, t) => [k.y - t, .3 + .7 * tri(k.y - t)],
+    3: (k, t) => { const d = distance(k.x, k.y, .5, .5); return [d * 2 - t, .3 + .7 * tri(d * 2 - t)]; },
+    4: (k, t) => { const d = Math.abs(k.x - .5) * 2; return [d - t, .3 + .7 * tri(d - t)]; },
+    5: (k, t) => [k.x + t / 4, .08 + gauss(k.x - tri(t / 2), .22)],
+    6: (k, t) => [k.x + k.y - t, .25 + .75 * tri(k.x - k.y - t)],
+    7: (k, t) => [Math.floor(t / 2) / 6, .05 + .95 * Math.sin(Math.PI * t / 2) ** 2],
+    8: (k, t) => [k.seed, .15 + .85 * Math.sin(Math.PI * (t / 2 + k.seed)) ** 2],
+    9: (k, t) => [Math.floor(t) / 3, .04 + gauss(k.x - tri(t / 2), .18)],
+    10: (k, t) => [k.x - t / 2, .03 + gauss(k.y - (.5 + .4 * Math.sin(2 * Math.PI * (k.x * 2 + t))), .13)],
+    11: (k, t) => [k.x + t / 2, .03 + gauss(k.y - (.5 + .4 * Math.sin(2 * Math.PI * (k.x * 2 - t))), .13)],
+    12: (k, t) => [k.seed, .2 + .8 * Math.sin(Math.PI * (t / 2 + k.seed * 7)) ** 2],
+    13: (k, t) => [k.seed * 3, Math.sin(Math.PI * (t + k.seed * 9)) ** 8],
+    14: (k, t) => {
+      const head = fract(t / 2 * (.6 + k.column) + k.column * 5) * 1.5;
+      const behind = head - k.y;
+      return [k.x + k.column, behind >= 0 && behind < .55 ? 1 - behind / .55 : 0];
+    },
+    15: (k, t) => {
+      const a = 2 * Math.PI * t / 2;
+      const d = distance(k.x, k.y, .5 + .4 * Math.cos(a), .5 + .4 * Math.sin(a));
+      return [Math.atan2(k.y - .5, k.x - .5) / (2 * Math.PI) + t / 4, .12 + .88 * gauss(d, .14)];
+    },
+    20: k => [0, k.code === 'ShiftLeft' ? .2 : 0]
+  };
+
+  function reactive(mode, key, now) {
+    let best = [0, 0];
+    for (const p of presses) {
+      const age = (now - p.time) / 1000;
+      const d = distance(key.x, key.y, p.x, p.y);
+      let level = 0;
+      let hue = p.hue;
+      if (mode === 16) {
+        level = key === p.key ? Math.max(0, 1 - age / 1.2) : 0;
+      } else if (mode === 17) {
+        level = Math.max(0, 1 - age / 1.1) * gauss(d, .075);
+      } else if (mode === 18) {
+        level = key.row === p.key.row ? gauss(Math.abs(key.x - p.x) - age * .7, .035) * Math.max(0, 1 - age / 1.4) : 0;
+      } else if (mode === 19) {
+        level = gauss(d - age * .42, .045) * Math.max(0, 1 - age / 1.5);
+        hue = p.hue + age;
+      }
+      if (level > best[1]) best = [hue, level];
+    }
+    return best;
+  }
+
+  function paintBoard(now, cycles) {
+    if (currentTab === 'keycolor') {
+      renderPaint();
+      return;
+    }
+    const { mode, rainbow, color, luminance } = effect;
+    const scale = Math.max(.15, Math.min(1, luminance / 100));
+    const isReactive = mode >= 16 && mode <= 19;
+    presses = presses.filter(p => now - p.time < 1700);
+    for (const key of getEffectKeys()) {
+      const [hue, level] = isReactive ? reactive(mode, key, now) : (EFFECTS[mode] || EFFECTS[1])(key, cycles);
+      const rgb = rainbow ? hsl(hue) : color;
+      const alpha = Math.max(0, Math.min(1, level)) * scale;
+      key.el.style.setProperty('--c', 'rgba(' + rgb.join(',') + ',' + alpha.toFixed(3) + ')');
+    }
+  }
+
+  function pressKey(key) {
+    presses.push({ key, x: key.x, y: key.y, time: performance.now(), hue: Math.random() });
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) paintBoard(performance.now(), 0);
+  }
+
+  function animateBoard(settings) {
+    effect = settings;
+    if (animation) cancelAnimationFrame(animation);
+    animation = null;
+    const board = $('board');
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      board.classList.remove('moving');
+      paintBoard(performance.now(), 0);
+      return;
+    }
+    board.classList.add('moving');
+    const started = performance.now();
+    const cyclesPerSecond = .1 + Math.max(0, Math.min(100, settings.speed)) / 100 * .6;
+    const frame = now => {
+      paintBoard(now, (now - started) / 1000 * cyclesPerSecond);
+      animation = requestAnimationFrame(frame);
+    };
+    animation = requestAnimationFrame(frame);
+  }
+
+  let pendingCtrl = null;
+
+  function setupKeyPresses() {
+    document.addEventListener('keydown', event => {
+      if (event.repeat) return;
+      const find = code => getEffectKeys().find(k => k.code && k.code === code);
+      // Windows, Alt Gr'ye basılınca önce sol Ctrl gönderir: kısa süre bekleyip bunu eler.
+      if (event.code === 'ControlLeft') {
+        pendingCtrl = setTimeout(() => {
+          pendingCtrl = null;
+          pressKey(find('ControlLeft'));
+        }, 40);
+        return;
+      }
+      if (event.code === 'AltRight' && pendingCtrl) {
+        clearTimeout(pendingCtrl);
+        pendingCtrl = null;
+      }
+      const key = find(event.code);
+      if (key) pressKey(key);
+    });
+    $('board').addEventListener('pointerdown', event => {
+      const el = event.target.closest('.key');
+      const key = el && getEffectKeys().find(k => k.el === el);
+      if (key) pressKey(key);
+    });
+  }
+
+  function fill(id, rows) {
+    const dl = $(id);
+    dl.replaceChildren();
+    for (const [term, value] of rows) {
+      const dt = document.createElement('dt');
+      const dd = document.createElement('dd');
+      dt.textContent = term;
+      dd.textContent = value;
+      dl.append(dt, dd);
+    }
+  }
+
+  function exchange(device, bytes, timeoutMs = 1000) {
+    return new Promise((resolve, reject) => {
+      const finish = (fn, value) => {
+        clearTimeout(timer);
+        device.removeEventListener('inputreport', onReport);
+        fn(value);
+      };
+      const onReport = e => finish(resolve, new Uint8Array(e.data.buffer, e.data.byteOffset, e.data.byteLength));
+      const timer = setTimeout(() => finish(resolve, null), timeoutMs);
+      device.addEventListener('inputreport', onReport);
+      const packet = new Uint8Array(64);
+      packet.set(bytes);
+      device.sendReport(0, packet).catch(error => finish(reject, error));
+    });
+  }
+
+  function maskSerial(key, bytes) {
+    const copy = Array.from(bytes);
+    if (key === 'info') for (let i = 17; i < 29 && i < copy.length; i++) copy[i] = 0;
+    return copy;
+  }
+
+  function setStatus(text, type) {
+    $('status').textContent = text;
+    $('status').className = type || '';
+  }
+
+  let report = '';
+
+  function render(results, productName) {
+    const { protocol, info, rateList, rate, lightBase, palette, profile } = results;
+    const activeProfile = profile ? profile[3] : null;
+    $('profiles').replaceChildren(...PROFILE_ORDER.map(i => {
+      const el = document.createElement('div');
+      el.className = 'rate ok' + (i === activeProfile ? ' now' : '');
+      el.textContent = PROFILES[i];
+      return el;
+    }));
+    $('profileHint').textContent = profile ? (PROFILES[activeProfile] ? 'Etkin profil: ' + PROFILES[activeProfile] + '. Işık ayarları bu profile kaydedilir. Düğmeyle değiştirip Yeniden oku\'ya bas.' : 'Bilinmeyen profil değeri: ' + activeProfile) : 'Okunamadı.';
+    if (productName) $('name').textContent = productName.replace(/^Rampage\s+/, '');
+
+    const supported = rateList ? rateList.slice(4, 4 + rateList[3]) : null;
+    const current = rate ? rate[3] : null;
+    drawRates(supported, current);
+    const currentName = RATES.find(r => r[0] === current);
+    $('rateHint').textContent = rate ? 'Şu an ' + (currentName ? currentName[1] : RATE_NAMES[current] || 'bilinmeyen değer ' + current) + '. Tüm profillerde ortak çalışır.' : 'Okunamadı.';
+
+    const colors = [];
+    if (palette) {
+      for (let i = 0; i < 8; i++) {
+        const b = palette[4 + 4 * i], g = palette[5 + 4 * i], r = palette[6 + 4 * i];
+        colors.push('rgb(' + r + ',' + g + ',' + b + ')');
+      }
+    }
+    const selected = lightBase ? lightBase[9] : -1;
+    $('swatches').replaceChildren(...colors.map((color, i) => {
+      const el = document.createElement('button');
+      const rainbow = i === 0 && color === 'rgb(0,0,0)';
+      el.className = 'swatch' + (rainbow ? ' rainbow' : '') + (i === selected ? ' on' : '');
+      if (!rainbow) el.style.background = color;
+      el.title = rainbow ? 'Gökkuşağı' : color;
+      el.setAttribute('aria-label', 'Renk ' + (rainbow ? 'gökkuşağı' : color));
+      el.setAttribute('aria-pressed', String(i === selected));
+      el.disabled = !lightBase;
+      el.addEventListener('click', () => applyLight('color', i));
+      return el;
+    }));
+    $('paletteHint').textContent = palette ? 'Bazı efektler seçili rengi kullanmayabilir.' : 'Okunamadı.';
+
+    if (lightBase) {
+      const open = lightBase[4] !== 0;
+      $('power').textContent = open ? 'Işığı kapat' : 'Işığı aç';
+      $('luminance').value = lightBase[6];
+      $('luminanceOut').textContent = lightBase[6];
+      $('speed').value = lightBase[7];
+      $('speedOut').textContent = lightBase[7];
+      $('effects').replaceChildren(...Array.from({ length: 20 }, (_, n) => {
+        const mode = n + 1;
+        const el = document.createElement('button');
+        el.className = 'effect';
+        const number = document.createElement('b');
+        number.textContent = 'L' + mode;
+        const title = document.createElement('span');
+        title.textContent = EFFECT_NAMES[n];
+        el.append(number, title);
+        el.setAttribute('aria-pressed', String(mode === lightBase[5]));
+        el.addEventListener('click', () => applyLight('mode', mode));
+        return el;
+      }));
+      const board = $('board');
+      const pickedColor = selected > 0 && colors[selected] && colors[selected] !== 'rgb(0,0,0)' ? parseColor(colors[selected]) : null;
+      if (open) {
+        animateBoard({ mode: lightBase[5], rainbow: !pickedColor, color: pickedColor || [255, 255, 255], speed: lightBase[7], luminance: lightBase[6] });
+      } else if (animation) {
+        cancelAnimationFrame(animation);
+        animation = null;
+      }
+      board.classList.toggle('lit', open);
+      $('legend').textContent = !open ? 'Klavyede ışık kapalı.' : lightBase[5] >= 16 && lightBase[5] <= 19 ? 'Efekti görmek için klavyende bir tuşa bas veya çizime tıkla.' : 'Çizimdeki efekt temsilîdir, gerçek görünüm klavyende.';
+    }
+
+    const rows = [];
+    if (info) {
+      rows.push(['Uygulama sürümü', Array.from(info.slice(8, 12)).join('.')]);
+      const stamp = String.fromCharCode(...info.slice(29, 45)).replace(/\0/g, '');
+      if (/^\d{8}/.test(stamp)) rows.push(['Firmware tarihi', stamp.slice(6, 8) + '.' + stamp.slice(4, 6) + '.' + stamp.slice(0, 4)]);
+    }
+    if (protocol) rows.push(['Protokol', protocol[2] + '.' + protocol[3]]);
+    fill('device', rows.length ? rows : [['Durum', 'Okunamadı']]);
+  }
+
+  let device = null;
+  let keyMap = null;
+  let triggerData = null;
+  let paintData = null;
+  let paintDirty = false;
+  let currentTab = 'settings';
+  const triggerPicked = new Set();
+  let triggerMode = 1;
+  let macroCapacity = 0;
+  let macros = null;
+  let macroSelected = 0;
+  let macroActions = [];
+  let macroType = 'count';
+  let recording = false;
+  let recordLast = 0;
+  let lastResults = {};
+  let busy = false;
+
+  async function withDevice(work) {
+    if (!device.opened) await device.open();
+    try {
+      return await work();
+    } finally {
+      if (device.opened) {
+        try { await device.close(); } catch (error) {}
+      }
+    }
+  }
+
+  function updateTestControls() {
+    const ready = !busy && !!lastResults.lightBase;
+    $('run').disabled = busy;
+    for (const id of ['power', 'luminance', 'speed', 'customColor', 'applyColor']) $(id).disabled = !ready || (id.endsWith('Color') && !lastResults.palette);
+    document.querySelectorAll('.swatch, .effect').forEach(el => { el.disabled = !ready; });
+    $('resetAllKeys').disabled = busy || !keyMap || changedKeys().length === 0;
+    document.querySelectorAll('.key[data-position]').forEach(el => { el.tabIndex = (keyMap || triggerData || paintData) && !busy ? 0 : -1; });
+    const macroReady = !busy && !!macros;
+    document.querySelectorAll('.macro-slot').forEach(el => { el.disabled = !macroReady; });
+    const editable = !busy && !recording;
+    $('macroRecord').disabled = busy;
+    $('macroRecord').textContent = recording ? 'Kaydı durdur' : 'Kaydı başlat';
+    $('macroAppend').disabled = !editable || macroActions.length === 0;
+    $('macroCancel').disabled = busy || recording;
+    $('macroSave').disabled = !editable || macroActions.length === 0;
+    $('macroClear').disabled = !editable || !macros || !macros[macroSelected] || macros[macroSelected].count === 0;
+    document.querySelectorAll('#macroDialog input, .macro-type[data-type]').forEach(el => { el.disabled = !editable; });
+    if (editable) {
+      $('macroStandardMs').disabled = !$('macroStandard').checked;
+      $('macroRepeat').disabled = macroType !== 'count';
+    }
+    $('triggerRead').disabled = busy || !device;
+    $('triggerApply').disabled = busy || !device || !triggerData || triggerTargets().length === 0;
+    const activeProfile = lastResults.profile ? lastResults.profile[3] : null;
+    const hasFactory = activeProfile !== null && !!TRIGGER_FACTORY[activeProfile];
+    $('triggerFactory').disabled = busy || !device || !triggerData || !hasFactory;
+    $('triggerFactoryHint').textContent = !triggerData ? '' : hasFactory ? PROFILES[activeProfile] + ' profilindeki bütün tuşları fabrika tetik değerlerine döndürür. Işık ve tuş atamaları değişmez.' : 'Bu profilin fabrika tetik değerleri henüz kayıtlı değil.';
+    const paintReady = !busy && !!paintData;
+    for (const id of ['paintColor', 'paintAll', 'paintClear']) $(id).disabled = !paintReady;
+    $('paintSave').disabled = !paintReady || !paintDirty;
+    const rateReady = !busy && !!lastResults.rate && !!lastResults.rateList;
+    document.querySelectorAll('.rate').forEach(el => {
+      el.disabled = !rateReady || !el.classList.contains('ok') || el.classList.contains('now');
+    });
+  }
+
+  async function readAll() {
+    const results = {};
+    const lines = ['Cihaz: ' + (device.productName || '(adsız)')];
+    let matched = 0;
+    const keys = Object.keys(READ_COMMANDS);
+    for (const key of keys) {
+      const bytes = READ_COMMANDS[key];
+      const response = await exchange(device, bytes);
+      if (!response) {
+        lines.push('', key + ' | gönderilen: ' + hex(bytes), 'yanıt: yok');
+        continue;
+      }
+      const safe = maskSerial(key, response);
+      const echoes = safe[0] === bytes[0] && safe[1] === bytes[1];
+      lines.push('', key + ' | gönderilen: ' + hex(bytes), 'yanıt: ' + hex(safe), 'eşleşme: ' + (echoes ? 'evet' : 'hayır'));
+      if (echoes) { results[key] = Uint8Array.from(safe); matched++; }
+    }
+    lastResults = results;
+    report = lines.join('\n');
+    $('raw').textContent = report;
+    $('copy').disabled = false;
+    render(results, device.productName);
+    return { matched, total: keys.length };
+  }
+
+  async function run() {
+    if (!('hid' in navigator)) {
+      setStatus('Bu tarayıcı klavyeye bağlanamıyor. Dosyayı Chrome veya Edge ile aç.', 'bad');
+      return;
+    }
+    busy = true;
+    updateTestControls();
+    try {
+      if (!device) {
+        const devices = await navigator.hid.requestDevice({ filters: [FILTER] });
+        if (!devices[0]) {
+          setStatus('Klavye seçilmedi. Düğmeye yeniden basıp listeden klavyeni seç.', 'bad');
+          return;
+        }
+        device = devices[0];
+      }
+      const { matched, total } = await withDevice(async () => {
+        const result = await readAll();
+        await scanKeyMap();
+        await scanMacros();
+        await readPaint();
+        return result;
+      });
+      $('run').textContent = 'Yeniden oku';
+      if (matched === total) {
+        setStatus('Tüm okuma komutları yanıtlandı. Hiçbir ayar değiştirilmedi.', 'ok');
+      } else {
+        setStatus(matched + ' / ' + total + ' komut beklenen yanıtı verdi. Sonucu kopyalayıp gönder.', 'bad');
+      }
+    } catch (error) {
+      device = null;
+      setStatus('Bağlantı hatası: ' + error.message + '. Başka bir klavye programı açıksa kapatıp yeniden dene.', 'bad');
+    } finally {
+      busy = false;
+      updateTestControls();
+    }
+  }
+
+  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+  // Polling rate değişince klavye USB bağlantısını yenileyebilir: yeniden bağlanıp değeri okur.
+  async function reconnectAndReadRate(timeoutMs = 8000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      await sleep(400);
+      try {
+        const found = (await navigator.hid.getDevices()).find(d =>
+          d.vendorId === FILTER.vendorId && d.productId === FILTER.productId &&
+          d.collections.some(c => c.usagePage === FILTER.usagePage));
+        if (!found) continue;
+        if (!found.opened) await found.open();
+        device = found;
+        const response = await exchange(device, READ_COMMANDS.rate, 700);
+        if (response && response[0] === 2 && response[1] === 5 && response[2] === 1) return response;
+      } catch (error) {}
+    }
+    return null;
+  }
+
+  async function applyRate(value) {
+    if (busy || !device || !lastResults.rateList) return;
+    const list = lastResults.rateList;
+    const supported = Array.from(list.slice(4, 4 + list[3]));
+    busy = true;
+    updateTestControls();
+    setStatus('Polling rate değiştiriliyor, klavye bir an kopabilir.');
+    try {
+      const write = buildRateWrite(value, supported);
+      const name = RATES.find(r => r[0] === value)[1];
+      const outcome = await withDevice(async () => {
+        let response = null;
+        let after = null;
+        let reconnected = false;
+        try {
+          response = await exchange(device, write);
+          await sleep(300);
+          after = await exchange(device, READ_COMMANDS.rate);
+        } catch (error) {}
+        if (!after || after[0] !== 2 || after[1] !== 5 || after[2] !== 1) {
+          reconnected = true;
+          after = await reconnectAndReadRate();
+        }
+        if (!after) return 'Klavye yeniden bağlanmadı. Kabloyu çıkarıp tak, sayfayı yenileyip yeniden oku.';
+        await readAll();
+        report += '\n\npolling rate yazma (' + name + ') | gönderilen: ' + hex(write) + '\nyanıt: ' + (response ? hex(response) : 'yok') + '\nyeniden bağlandı: ' + (reconnected ? 'evet' : 'hayır') + '\ngeri okuma: ' + hex(after);
+        $('raw').textContent = report;
+        if (after[3] !== value) return 'Klavye yeni polling rate değerini almadı. Sonucu kopyalayıp gönder.';
+        return null;
+      });
+      if (outcome) setStatus(outcome, 'bad');
+      else setStatus('Polling rate ' + name + ' yapıldı ve klavyeden geri okunarak doğrulandı.', 'ok');
+    } catch (error) {
+      device = null;
+      setStatus('Bağlantı hatası: ' + error.message + '. Kabloyu çıkarıp tak, sayfayı yenileyip yeniden oku.', 'bad');
+    } finally {
+      busy = false;
+      updateTestControls();
+    }
+  }
+
+  function changedKeys() {
+    if (!keyMap) return [];
+    const changed = [];
+    FACTORY_MAP.forEach((cols, row) => cols.forEach((factory, col) => {
+      if (factory && keyMap[row][col] !== factory) changed.push({ row, col, factory });
+    }));
+    return changed;
+  }
+
+  function renderKeyMap() {
+    document.querySelectorAll('.key[data-position]').forEach(el => {
+      const [row, col] = el.dataset.position.split(',').map(Number);
+      const changed = !!keyMap && keyMap[row][col] !== FACTORY_MAP[row][col];
+      el.classList.toggle('mapped', changed);
+      const cap = el.querySelector('.cap');
+      if (!cap) return;
+      let tag = cap.querySelector('.assigned');
+      if (changed) {
+        if (!tag) {
+          tag = document.createElement('span');
+          tag.className = 'assigned';
+          cap.appendChild(tag);
+        }
+        const assigned = keyMap[row][col];
+        tag.textContent = assigned >= MACRO_KEY_BASE && assigned < MACRO_KEY_BASE + MACRO_COUNT ? 'M' + (assigned - MACRO_KEY_BASE + 1) : KEY_LABELS[assigned] || assigned.toString(16);
+      } else if (tag) {
+        tag.remove();
+      }
+    });
+    if (keyMap) {
+      const count = changedKeys().length;
+      $('keyHint').textContent = 'Çizimde bir tuşa tıkla, yeni görevini seç. Atamalar etkin profile kaydedilir.' + (count ? ' Bu profilde ' + count + ' tuş değişti.' : '');
+    }
+  }
+
+  function keyGroup(code) {
+    if (code >= MACRO_KEY_BASE) return 'Makrolar';
+    if (code >= 0xe0) return 'Ctrl, Shift, Alt, Win';
+    if (code >= 0x3a && code <= 0x45) return 'F tuşları';
+    if (code >= 0x46 && code <= 0x52) return 'Düzenleme ve yön';
+    if ([0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x39].includes(code)) return 'Temel tuşlar';
+    return /^[A-ZĞÜŞİÖÇ]$/.test(KEY_LABELS[code]) ? 'Harfler' : 'Rakam ve simge';
+  }
+
+  const GROUP_ORDER = ['Makrolar', 'Harfler', 'Rakam ve simge', 'Temel tuşlar', 'F tuşları', 'Düzenleme ve yön', 'Ctrl, Shift, Alt, Win'];
+  let menuKey = null;
+
+  function closeKeyMenu(focusKey) {
+    $('keyMenu').hidden = true;
+    if (focusKey && menuKey) menuKey.focus();
+    menuKey = null;
+  }
+
+  function openKeyMenu(el) {
+    if (!keyMap || busy) return;
+    const id = el.dataset.position;
+    const [row, col] = id.split(',').map(Number);
+    const menu = $('keyMenu');
+    menu.replaceChildren();
+    menuKey = el;
+    const title = document.createElement('p');
+    title.className = 'title';
+    title.textContent = POSITION_LABELS[id];
+    menu.appendChild(title);
+    if (LOCKED_KEYS.includes(id)) {
+      const note = document.createElement('p');
+      note.textContent = 'Bu tuş değiştirilemez, çünkü FN + Caps Lock kurtarma yolunu korur.';
+      menu.appendChild(note);
+    } else {
+      const current = keyMap[row][col];
+      const factory = FACTORY_MAP[row][col];
+      const choice = (code, text, className) => {
+        const button = document.createElement('button');
+        button.textContent = text;
+        if (className) button.className = className;
+        button.addEventListener('click', () => {
+          closeKeyMenu(false);
+          if (code === current) return;
+          const done = code === factory ? POSITION_LABELS[id] + ' varsayılana döndü.' : POSITION_LABELS[id] + ' artık ' + KEY_LABELS[code] + ' olarak çalışmalı.';
+          changeKeys(() => writeKey(row, col, code), done);
+        });
+        return button;
+      };
+      if (current !== factory) menu.appendChild(choice(factory, 'Varsayılan: ' + KEY_LABELS[factory], 'factory'));
+      for (const group of GROUP_ORDER) {
+        const codes = Object.keys(KEY_LABELS).map(Number).filter(c => keyGroup(c) === group).sort((a, b) => a - b);
+        const heading = document.createElement('h3');
+        heading.textContent = group;
+        menu.appendChild(heading);
+        for (const code of codes) menu.appendChild(choice(code, KEY_LABELS[code], code === current ? 'current' : ''));
+      }
+    }
+    menu.hidden = false;
+    const rect = el.getBoundingClientRect();
+    const width = menu.offsetWidth;
+    const height = menu.offsetHeight;
+    const left = Math.max(8, Math.min(rect.left, document.documentElement.clientWidth - width - 8));
+    const below = rect.bottom + 6;
+    const top = below + height > window.innerHeight && rect.top - height - 6 > 0 ? rect.top - height - 6 : below;
+    menu.style.left = left + window.scrollX + 'px';
+    menu.style.top = top + window.scrollY + 'px';
+    const focusTarget = menu.querySelector('button.current') || menu.querySelector('button');
+    if (focusTarget) {
+      focusTarget.focus({ preventScroll: true });
+      focusTarget.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  async function scanKeyMap() {
+    const map = FACTORY_MAP.map(cols => cols.map(() => 0));
+    const rows = [];
+    for (let row = 0; row < FACTORY_MAP.length; row++) {
+      const cells = [];
+      for (let col = 0; col < FACTORY_MAP[row].length; col++) {
+        const r = await exchange(device, [0x03, 0x03, 0x00, row, col], 400);
+        if (!r || r[0] !== 3 || r[1] !== 3 || r[3] !== row || r[4] !== col) {
+          keyMap = null;
+          report += '\n\ntuş haritası okunamadı: satır ' + row + ', sütun ' + col;
+          $('raw').textContent = report;
+          renderKeyMap();
+          return false;
+        }
+        map[row][col] = r[5] | r[6] << 8;
+        cells.push(map[row][col].toString(16).padStart(4, '0'));
+      }
+      rows.push('satır ' + row + ': ' + cells.join(' '));
+    }
+    keyMap = map;
+    report += '\n\ntuş haritası (ana katman)\n' + rows.join('\n');
+    $('raw').textContent = report;
+    renderKeyMap();
+    return true;
+  }
+
+  const CODE_TO_HID = { ControlRight: 0xe4, MetaRight: 0xe7 };
+
+  function macroKeyName(code) {
+    return KEY_LABELS[code] || code.toString(16);
+  }
+
+  const NAMES_KEY = 'stug-macro-names';
+
+  function readMacroNames() {
+    try { return JSON.parse(localStorage.getItem(NAMES_KEY)) || {}; } catch (error) { return {}; }
+  }
+
+  function saveMacroName(id, name) {
+    try {
+      const names = readMacroNames();
+      if (name) names[id] = name; else delete names[id];
+      localStorage.setItem(NAMES_KEY, JSON.stringify(names));
+    } catch (error) {}
+  }
+
+  function applyMacroLabels() {
+    const names = readMacroNames();
+    for (let id = 0; id < MACRO_COUNT; id++) KEY_LABELS[MACRO_KEY_BASE + id] = 'M' + (id + 1) + (names[id] ? ': ' + names[id] : '');
+  }
+
+  function renderMacros() {
+    const names = readMacroNames();
+    applyMacroLabels();
+    $('macroSlots').replaceChildren(...Array.from({ length: MACRO_COUNT }, (_, id) => {
+      const macro = macros && macros[id];
+      const el = document.createElement('button');
+      el.className = 'macro-slot' + (macro && macro.count ? ' filled' : '');
+      const number = document.createElement('b');
+      number.textContent = 'M' + (id + 1);
+      const text = document.createElement('span');
+      text.textContent = macro && macro.count ? (names[id] || macroTypeName[macroTypeOf(macro.mode)] + ', ' + macro.count + ' adım') : 'Boş';
+      el.append(number, text);
+      el.disabled = !macros || busy;
+      el.addEventListener('click', () => openMacro(id));
+      return el;
+    }));
+    if (macros) {
+      const used = macros.reduce((sum, m) => sum + m.count, 0);
+      $('macroHint').textContent = 'Düzenlemek için bir makro seç. Bir tuşa atamak için çizimde tuşa tıkla.' + (macroCapacity ? ' Kullanılan alan: ' + used + ' / ' + macroCapacity + ' adım.' : '');
+    }
+    renderMacroSteps();
+  }
+
+  function renderMacroSteps() {
+    const wrap = $('macroStepsWrap');
+    if (!macroActions.length) {
+      const empty = document.createElement('p');
+      empty.className = 'macro-empty';
+      empty.style.margin = '0';
+      empty.textContent = recording ? 'Kayıt açık, tuşlara bas.' : 'Henüz adım yok. Kaydı başlat ve tuşlara bas.';
+      wrap.replaceChildren(empty);
+      return;
+    }
+    const standard = $('macroStandard').checked;
+    const list = document.createElement('ol');
+    list.className = 'macro-list';
+    macroActions.forEach((action, i) => {
+      const li = document.createElement('li');
+      const num = document.createElement('span');
+      num.className = 'num';
+      num.textContent = i + 1;
+      const dir = document.createElement('span');
+      dir.className = 'dir' + (action.down ? ' down' : '');
+      dir.textContent = action.down ? '↓' : '↑';
+      dir.title = action.down ? 'Bas' : 'Bırak';
+      const key = document.createElement('span');
+      key.className = 'key';
+      key.textContent = macroKeyName(action.code);
+      const ms = document.createElement('label');
+      ms.className = 'ms';
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.className = 'step-delay';
+      input.min = 1;
+      input.max = 32767;
+      input.value = standard ? $('macroStandardMs').value : action.delay;
+      input.disabled = standard || recording || busy;
+      input.setAttribute('aria-label', (i + 1) + '. adım gecikmesi');
+      input.addEventListener('change', () => {
+        const value = Math.round(Number(input.value));
+        action.delay = Math.max(1, Math.min(32767, value || 1));
+        input.value = action.delay;
+      });
+      ms.append(input, 'ms');
+      const remove = document.createElement('button');
+      remove.className = 'step-delete';
+      remove.textContent = 'Sil';
+      remove.disabled = recording || busy;
+      remove.addEventListener('click', () => {
+        macroActions.splice(i, 1);
+        $('macroError').hidden = true;
+        renderMacroSteps();
+        updateTestControls();
+      });
+      li.append(num, dir, key, ms, remove);
+      list.appendChild(li);
+    });
+    wrap.replaceChildren(list);
+    list.scrollTop = recording ? list.scrollHeight : 0;
+  }
+
+  function renderMacroForm() {
+    document.querySelectorAll('.macro-type[data-type]').forEach(el => el.setAttribute('aria-pressed', String(el.dataset.type === macroType)));
+    $('macroRepeatLabel').hidden = macroType !== 'count';
+    updateTestControls();
+  }
+
+  async function scanMacros() {
+    const list = [];
+    for (let id = 0; id < MACRO_COUNT; id++) {
+      const r = await exchange(device, [0x07, 0x01, id], 400);
+      if (!r || r[0] !== 7 || r[1] !== 1 || r[2] !== id) {
+        macros = null;
+        report += '\n\nmakro okunamadı: ' + id;
+        $('raw').textContent = report;
+        renderMacros();
+        return false;
+      }
+      list.push({ valid: r[3] === 1, count: r[3] === 1 ? (r[4] | r[5] << 8) : 0, repeat: (r[6] | r[7] << 8) || 1, mode: r[8] });
+    }
+    macros = list;
+    const space = await exchange(device, [0x02, 0x0e, 0x00], 400);
+    macroCapacity = space && space[0] === 2 && space[1] === 0x0e ? Math.min(MACRO_ABSOLUTE_MAX, space[4] | space[5] << 8) : 0;
+    report += '\n\nmakro kapasitesi: ' + (space ? hex(space.slice(0, 8)) : 'yok');
+    report += '\n\nmakrolar: ' + list.map((m, i) => 'M' + (i + 1) + '=' + m.count + '/mod ' + m.mode).join(' ');
+    $('raw').textContent = report;
+    renderMacros();
+    return true;
+  }
+
+  async function loadMacroActions(id) {
+    const count = macros[id].count;
+    const actions = [];
+    for (let page = 0; page * 15 < count; page++) {
+      const r = await exchange(device, [0x07, 0x03, id, page], 500);
+      if (!r || r[0] !== 7 || r[1] !== 3 || r[2] !== id || r[3] !== page) throw new Error('Makro adımları okunamadı');
+      for (let n = 0; n < 15 && actions.length < count; n++) actions.push(parseMacroAction(r, 4 + n * 4));
+    }
+    return actions;
+  }
+
+  async function macroTask(work) {
+    if (busy || !device) return false;
+    busy = true;
+    updateTestControls();
+    try {
+      await withDevice(work);
+      return true;
+    } catch (error) {
+      device = null;
+      setStatus('Makro hatası: ' + error.message + '. Klavyeyi yeniden bağlayıp oku.', 'bad');
+      $('macroError').textContent = error.message;
+      $('macroError').hidden = false;
+      return false;
+    } finally {
+      busy = false;
+      updateTestControls();
+    }
+  }
+
+  async function openMacro(id) {
+    macroSelected = id;
+    let actions = [];
+    const ok = await macroTask(async () => { actions = await loadMacroActions(id); });
+    if (!ok) return;
+    macroActions = actions;
+    const macro = macros[id];
+    macroType = macroTypeOf(macro.mode);
+    $('macroSlotName').textContent = 'M' + (id + 1);
+    $('macroName').value = readMacroNames()[id] || '';
+    $('macroRepeat').value = macroType === 'count' && macro.repeat <= 9999 ? macro.repeat : 1;
+    $('macroStandard').checked = false;
+    $('macroError').hidden = true;
+    renderMacroSteps();
+    renderMacroForm();
+    closeKeyMenu(false);
+    $('macroDialog').showModal();
+  }
+
+  function startRecording(keep) {
+    $('macroError').hidden = true;
+    if (!keep) macroActions = [];
+    recording = true;
+    recordLast = 0;
+    if (document.activeElement) document.activeElement.blur();
+    renderMacroSteps();
+    updateTestControls();
+  }
+
+  function stopRecording() {
+    recording = false;
+    renderMacroSteps();
+    updateTestControls();
+  }
+
+  function recordKey(event) {
+    if (!recording) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.repeat) return;
+    const code = CODE_TO_HID[event.code];
+    if (!code) return;
+    const down = event.type === 'keydown';
+    const now = performance.now();
+    const last = macroActions[macroActions.length - 1];
+    // Windows, Alt Gr ile birlikte sol Ctrl de gönderir: aynı anda gelen sol Ctrl kaydedilmez.
+    if (code === 0xe6 && last && last.code === 0xe0 && last.down === down && now - recordLast < 40) macroActions.pop();
+    const previous = macroActions[macroActions.length - 1];
+    if (previous && recordLast) previous.delay = Math.max(1, Math.min(32767, Math.round(now - recordLast)));
+    macroActions.push({ code, down, delay: 10 });
+    recordLast = now;
+    if (macroActions.length >= macroLimit()) stopRecording();
+    else renderMacroSteps();
+  }
+
+  function macroLimit() {
+    const others = macros ? macros.reduce((sum, m, i) => i === macroSelected ? sum : sum + m.count, 0) : 0;
+    return Math.max(2, (macroCapacity || 60) - others);
+  }
+
+  function macroProblem(actions) {
+    if (actions.length > macroLimit()) return 'Makro alanı yetmiyor: en fazla ' + macroLimit() + ' adım kaydedebilirsin.';
+    const held = new Set();
+    for (const action of actions) {
+      if (action.down) held.add(action.code); else held.delete(action.code);
+    }
+    if (held.size) return 'Bırakılmayan tuş var: ' + [...held].map(macroKeyName).join(', ') + '. Takılı kalmaması için ilgili bırakma adımını ekle.';
+    return null;
+  }
+
+  async function saveMacro() {
+    const id = macroSelected;
+    const standard = $('macroStandard').checked;
+    const standardMs = Math.round(Number($('macroStandardMs').value));
+    const actions = macroActions.map(a => ({ ...a, delay: standard ? standardMs : a.delay }));
+    const repeat = Math.round(Number($('macroRepeat').value));
+    $('macroError').hidden = true;
+    const showError = text => {
+      $('macroError').textContent = text;
+      $('macroError').hidden = false;
+    };
+    const problem = macroProblem(actions);
+    if (problem) return showError(problem);
+    if (standard && (standardMs < 1 || standardMs > 32767)) return showError('Standart gecikme 1-32767 ms olmalı.');
+    if (macroType === 'count' && (repeat < 1 || repeat > 9999)) return showError('Tekrar sayısı 1-9999 olmalı.');
+    let failed = null;
+    const ok = await macroTask(async () => {
+      const mode = buildMacroMode(id, actions.length, macroType, repeat, true);
+      await exchange(device, mode, 800);
+      report += '\n\nmakro modu: ' + hex(mode);
+      for (let i = 0, page = 0; i < actions.length; i += 15, page++) {
+        const write = buildMacroData(id, page, actions.slice(i, i + 15));
+        await exchange(device, write, 800);
+        report += '\nmakro yazma: ' + hex(write);
+      }
+      const check = await exchange(device, [0x07, 0x01, id], 600);
+      if (!check || check[3] !== 1 || (check[4] | check[5] << 8) !== actions.length || check[6] !== mode[6] || check[7] !== mode[7] || check[8] !== mode[8]) {
+        failed = 'Makro ayarı beklenen şekilde okunamadı. Sonucu kopyalayıp gönder.';
+        return;
+      }
+      macros[id] = { valid: true, count: actions.length, repeat: check[6] | check[7] << 8, mode: check[8] };
+      const stored = await loadMacroActions(id);
+      if (!actions.every((a, i) => stored[i] && a.code === stored[i].code && a.down === stored[i].down && a.delay === stored[i].delay)) failed = 'Makro adımları beklenen şekilde okunamadı. Sonucu kopyalayıp gönder.';
+      $('raw').textContent = report;
+    });
+    if (!ok) return;
+    if (failed) {
+      setStatus(failed, 'bad');
+      return showError(failed);
+    }
+    saveMacroName(id, $('macroName').value.trim());
+    renderMacros();
+    $('macroDialog').close();
+    setStatus('M' + (id + 1) + ' kaydedildi ve klavyeden geri okunarak doğrulandı.', 'ok');
+  }
+
+  async function clearMacro() {
+    const id = macroSelected;
+    let failed = false;
+    const ok = await macroTask(async () => {
+      const mode = buildMacroMode(id, 0, 'count', 1, false);
+      await exchange(device, mode, 800);
+      report += '\n\nmakro silme: ' + hex(mode);
+      $('raw').textContent = report;
+      const check = await exchange(device, [0x07, 0x01, id], 600);
+      if (!check || check[3] !== 0) {
+        failed = true;
+        return;
+      }
+      macros[id] = { valid: false, count: 0, repeat: 1, mode: 0 };
+    });
+    if (!ok) return;
+    if (failed) {
+      $('macroError').textContent = 'Makro silinemedi. Sonucu kopyalayıp gönder.';
+      $('macroError').hidden = false;
+      return;
+    }
+    saveMacroName(id, '');
+    macroActions = [];
+    renderMacros();
+    $('macroDialog').close();
+    setStatus('M' + (id + 1) + ' silindi. Bu makroya atanmış tuş varsa onu da geri al.', 'ok');
+  }
+
+  const TRIGGER_MODES = { 0: 'Normal', 1: 'Rapid Trigger', 2: 'Aralıklı Rapid Trigger' };
+  const mm = (lo, hi) => ((lo | hi << 8) / 1000).toFixed(3).replace(/0$/, '') + ' mm';
+
+  const WASD = ['2,2', '3,1', '3,2', '3,3'];
+  // Klavyeden okunan fabrika değerleri: profil numarası -> [W-A-S-D, diğer tuşlar].
+  const TRIGGER_FACTORY = {
+    0: { mode: 0, dead: 200, wasd: { normal: 1500, first: 500, press: 300, release: 300 }, others: { normal: 1500, first: 500, press: 300, release: 300 } },
+    1: { mode: 1, dead: 0, wasd: { normal: 1000, first: 100, press: 100, release: 100 }, others: { normal: 1500, first: 1500, press: 150, release: 150 } },
+    2: { mode: 1, dead: 0, wasd: { normal: 100, first: 100, press: 40, release: 40 }, others: { normal: 1500, first: 1500, press: 150, release: 150 } }
+  };
+  const TRIGGER_LIMITS = { normalPress: [100, 3500], rtFirstTouch: [100, 3500], rtPress: [10, 2000], rtRelease: [10, 2000], pressDead: [0, 1000], releaseDead: [0, 1000] };
+
+  function checkTrigger(name, value) {
+    const [min, max] = TRIGGER_LIMITS[name];
+    if (!Number.isInteger(value) || value < min || value > max || value % 10 !== 0) throw new Error('Geçersiz tetik değeri: ' + name);
+    return value;
+  }
+
+  // Yalnızca istenen alanlar değişir; diğerleri klavyeden yeni okunan haliyle kalır.
+  function buildTriggerWrite(current, id, settings) {
+    const [row, col] = id.split(',').map(Number);
+    if (LOCKED_KEYS.includes(id)) throw new Error('Bu tuş korunuyor');
+    if (current[0] !== 4 || current[1] !== 1 || current[2] !== row || current[3] !== col) throw new Error('Tuş okuması doğrulanamadı');
+    const packet = [0x04, 0x02, row, col, ...current.slice(4, 27)];
+    const put = (index, value) => {
+      packet[index] = value & 255;
+      packet[index + 1] = value >> 8;
+    };
+    packet[4] = settings.mode;
+    if (settings.mode === 0) {
+      const press = checkTrigger('normalPress', settings.normalPress);
+      put(5, press);
+      put(7, press); // Klavye bırakma noktasını tetikle birlikte tutuyor.
+    } else if (settings.mode === 1) {
+      put(9, checkTrigger('rtFirstTouch', settings.rtFirstTouch));
+      put(11, checkTrigger('rtPress', settings.rtPress));
+      put(13, checkTrigger('rtRelease', settings.rtRelease));
+    } else {
+      throw new Error('Geçersiz mod');
+    }
+    put(15, checkTrigger('pressDead', settings.pressDead));
+    put(17, checkTrigger('releaseDead', settings.releaseDead));
+    packet[20] = 0;
+    return Object.freeze(packet);
+  }
+
+  function triggerTargets() {
+    const value = $('triggerTarget').value;
+    const all = Object.keys(triggerData).filter(id => !LOCKED_KEYS.includes(id));
+    if (value === 'all') return all;
+    if (value === 'wasd') return WASD;
+    if (value === 'others') return all.filter(id => !WASD.includes(id));
+    return all.filter(id => triggerPicked.has(id));
+  }
+
+  function setTriggerField(name, value) {
+    $(name).value = (value / 1000).toFixed(2);
+    $(name + 'Out').textContent = (value / 1000).toFixed(2) + ' mm';
+  }
+
+  function renderTriggerForm() {
+    if (!triggerData) return;
+    const b = triggerData[triggerTargets()[0]];
+    if (!b) return;
+    triggerMode = b[4] === 0 ? 0 : 1;
+    setTriggerField('normalPress', b[5] | b[6] << 8);
+    setTriggerField('rtFirstTouch', b[9] | b[10] << 8);
+    setTriggerField('rtPress', b[11] | b[12] << 8);
+    setTriggerField('rtRelease', b[13] | b[14] << 8);
+    setTriggerField('pressDead', b[15] | b[16] << 8);
+    setTriggerField('releaseDead', b[17] | b[18] << 8);
+    renderTriggerMode();
+    updateRtWarning();
+  }
+
+  function renderTriggerSelection() {
+    const inTrigger = currentTab === 'trigger' && !!triggerData;
+    const targets = inTrigger ? new Set(triggerTargets()) : new Set();
+    document.querySelectorAll('.key[data-position]').forEach(el => el.classList.toggle('selected', targets.has(el.dataset.position)));
+    if (triggerData) {
+      $('triggerLegend').textContent = targets.size ? targets.size + ' tuş seçili. Çizimde tuşa tıklayarak seçimi değiştirebilirsin.' : 'Ayar yapmak için çizimde bir veya daha fazla tuşa tıkla.';
+    }
+    if (triggerData) updateTestControls();
+  }
+
+  function toggleTriggerKey(el) {
+    const id = el.dataset.position;
+    if (!triggerData) {
+      setStatus('Önce Tetik ayarlarını oku düğmesine bas.', 'bad');
+      return;
+    }
+    if (LOCKED_KEYS.includes(id)) {
+      setStatus((POSITION_LABELS[id] || 'Bu tuş') + ' korunuyor, tetik ayarı değiştirilemez.', 'bad');
+      return;
+    }
+    if ($('triggerTarget').value !== 'custom') {
+      triggerPicked.clear();
+      $('triggerTarget').value = 'custom';
+    }
+    if (triggerPicked.has(id)) triggerPicked.delete(id); else triggerPicked.add(id);
+    renderTriggerForm();
+    renderTriggerSelection();
+  }
+
+  function renderTriggerMode() {
+    document.querySelectorAll('[data-trigger-mode]').forEach(el => el.setAttribute('aria-pressed', String(Number(el.dataset.triggerMode) === triggerMode)));
+    $('fieldsNormal').hidden = triggerMode === 1;
+    $('fieldsRapid').hidden = triggerMode !== 1;
+  }
+
+  function updateRtWarning() {
+    $('rtWarning').hidden = Number($('rtPress').value) >= 0.04 && Number($('rtRelease').value) >= 0.04;
+  }
+
+  function renderTriggerSummary() {
+    const groups = new Map();
+    for (const [id, b] of Object.entries(triggerData)) {
+      const key = hex(b.slice(4, 21));
+      if (!groups.has(key)) groups.set(key, { bytes: b, names: [] });
+      groups.get(key).names.push(POSITION_LABELS[id] || id);
+    }
+    const total = Object.keys(triggerData).length;
+    const blocks = [...groups.values()].map(({ bytes: b, names }) => {
+      const block = document.createElement('div');
+      const heading = document.createElement('h3');
+      heading.textContent = names.length === total ? 'Tüm tuşlar (' + total + ')' : names.length + ' tuş: ' + names.slice(0, 8).join(', ') + (names.length > 8 ? '...' : '');
+      const table = document.createElement('table');
+      const rows = b[4] === 0 ? [['Mod', 'Normal'], ['Tetik noktası', mm(b[5], b[6])]] : [['Mod', TRIGGER_MODES[b[4]] || 'bilinmeyen ' + b[4]], ['İlk temas', mm(b[9], b[10])], ['Basma mesafesi', mm(b[11], b[12])], ['Bırakma mesafesi', mm(b[13], b[14])]];
+      rows.push(['Ölü bölgeler', mm(b[15], b[16]) + ' / ' + mm(b[17], b[18])]);
+      for (const [term, value] of rows) {
+        const tr = document.createElement('tr');
+        const th = document.createElement('th');
+        th.textContent = term;
+        const td = document.createElement('td');
+        td.textContent = value;
+        tr.append(th, td);
+        table.appendChild(tr);
+      }
+      block.append(heading, table);
+      return block;
+    });
+    $('triggerResult').replaceChildren(...blocks);
+  }
+
+  async function restoreTriggerFactory() {
+    if (busy || !device || !triggerData) return;
+    busy = true;
+    updateTestControls();
+    try {
+      const outcome = await withDevice(async () => {
+        const profile = await exchange(device, READ_COMMANDS.profile, 600);
+        if (!profile || profile[0] !== 2 || profile[1] !== 3) return 'Etkin profil okunamadı, komut gönderilmedi.';
+        const factory = TRIGGER_FACTORY[profile[3]];
+        if (!factory) return 'Düğmeyle başka profile geçilmiş. Yeniden okuyup tekrar dene.';
+        const lines = [];
+        const targets = Object.keys(triggerData).filter(id => !LOCKED_KEYS.includes(id));
+        let done = 0;
+        for (const id of targets) {
+          const [row, col] = id.split(',').map(Number);
+          setStatus('Geri alınıyor: ' + (done + 1) + ' / ' + targets.length);
+          const read = [0x04, 0x01, row, col];
+          const before = await exchange(device, read, 600);
+          if (!before || before[0] !== 4 || before[2] !== row || before[3] !== col) return done + ' tuş geri alındı, sonra ' + POSITION_LABELS[id] + ' okunamadı ve işlem durdu.';
+          const v = WASD.includes(id) ? factory.wasd : factory.others;
+          const packet = [0x04, 0x02, row, col, ...before.slice(4, 27)];
+          packet[4] = factory.mode;
+          [[5, v.normal], [7, v.normal], [9, v.first], [11, v.press], [13, v.release], [15, factory.dead], [17, factory.dead]].forEach(([at, value]) => {
+            packet[at] = value & 255;
+            packet[at + 1] = value >> 8;
+          });
+          packet[20] = 0;
+          await exchange(device, packet, 800);
+          const after = await exchange(device, read, 600);
+          if (!after) return done + ' tuş geri alındı, sonra ' + POSITION_LABELS[id] + ' doğrulanamadı ve işlem durdu.';
+          lines.push(id + ': ' + hex(after.slice(4, 21)));
+          triggerData[id] = after.slice(0);
+          if (Array.from({ length: 23 }, (_, n) => n + 4).some(i => after[i] !== packet[i] && i !== 20)) {
+            report += '\n\nfabrika tetik\n' + lines.join('\n');
+            $('raw').textContent = report;
+            return POSITION_LABELS[id] + ' beklenmeyen değer döndürdü, işlem durdu. Sonucu kopyalayıp gönder.';
+          }
+          done++;
+        }
+        report += '\n\nfabrika tetik\n' + lines.join('\n');
+        $('raw').textContent = report;
+        return null;
+      });
+      renderTriggerSummary();
+      renderTriggerForm();
+      if (outcome) setStatus(outcome, 'bad');
+      else setStatus('Bu profilin tetik ayarları fabrika değerlerine döndü ve doğrulandı.', 'ok');
+    } catch (error) {
+      device = null;
+      setStatus('Yazma hatası: ' + error.message + '. Klavyeyi yeniden bağlayıp oku.', 'bad');
+    } finally {
+      busy = false;
+      updateTestControls();
+    }
+  }
+
+  async function applyTriggers() {
+    if (busy || !device || !triggerData) return;
+    const targets = triggerTargets();
+    if (!targets.length) return;
+    const value = id => Math.round(Number($(id).value) * 100) * 10;
+    const settings = { mode: triggerMode, normalPress: value('normalPress'), rtFirstTouch: value('rtFirstTouch'), rtPress: value('rtPress'), rtRelease: value('rtRelease'), pressDead: value('pressDead'), releaseDead: value('releaseDead') };
+    busy = true;
+    updateTestControls();
+    try {
+      const outcome = await withDevice(async () => {
+        const lines = [];
+        let done = 0;
+        for (const id of targets) {
+          const [row, col] = id.split(',').map(Number);
+          setStatus('Uygulanıyor: ' + (done + 1) + ' / ' + targets.length);
+          const read = [0x04, 0x01, row, col];
+          const before = await exchange(device, read, 600);
+          if (!before) return done + ' tuş uygulandı, sonra ' + POSITION_LABELS[id] + ' okunamadı ve işlem durdu.';
+          const write = buildTriggerWrite(before, id, settings);
+          await exchange(device, write, 800);
+          const after = await exchange(device, read, 600);
+          if (!after) return done + ' tuş uygulandı, sonra ' + POSITION_LABELS[id] + ' doğrulanamadı ve işlem durdu.';
+          const changing = [15, 16, 17, 18, ...(settings.mode === 0 ? [5, 6, 7, 8] : [9, 10, 11, 12, 13, 14])];
+          const wrong = Array.from({ length: 23 }, (_, n) => n + 4).some(i => {
+            if (i === 4 || changing.includes(i)) return after[i] !== write[i];
+            return after[i] !== before[i];
+          });
+          lines.push(id + ': ' + hex(write.slice(4, 21)) + ' sonra ' + hex(after.slice(4, 21)));
+          triggerData[id] = after.slice(0);
+          if (wrong) {
+            report += '\n\ntetik yazma\n' + lines.join('\n');
+            $('raw').textContent = report;
+            return POSITION_LABELS[id] + ' beklenmeyen değer döndürdü, işlem durdu. Sonucu kopyalayıp gönder.';
+          }
+          done++;
+        }
+        report += '\n\ntetik yazma\n' + lines.join('\n');
+        $('raw').textContent = report;
+        return null;
+      });
+      renderTriggerSummary();
+      if (outcome) setStatus(outcome, 'bad');
+      else setStatus(targets.length + ' tuşa uygulandı ve geri okunarak doğrulandı.', 'ok');
+    } catch (error) {
+      device = null;
+      setStatus('Yazma hatası: ' + error.message + '. Klavyeyi yeniden bağlayıp oku.', 'bad');
+    } finally {
+      busy = false;
+      updateTestControls();
+    }
+  }
+
+  const CUSTOM_EFFECT = 20;
+  const PAINT_COLS = 21;
+  const PAINT_ROWS = 6;
+  const PAINT_PAGES = 9;
+  const SPACE_LEDS = [4, 5, 6, 7, 8]; // Boşluk tuşunda birden çok ışık var.
+
+  const paintIndex = (row, col) => row * PAINT_COLS + col;
+
+  function paintCells(id) {
+    const [row, col] = id.split(',').map(Number);
+    return id === '5,6' ? SPACE_LEDS.map(c => paintIndex(5, c)) : [paintIndex(row, col)];
+  }
+
+  async function readPaint() {
+    const data = new Uint8Array(PAINT_ROWS * PAINT_COLS * 4);
+    for (let page = 0; page < PAINT_PAGES; page++) {
+      const r = await exchange(device, [0x05, 0x03, 0x00, page], 500);
+      if (!r || r[0] !== 5 || r[1] !== 3 || r[3] !== page) {
+        paintData = null;
+        report += '\n\ntuş renkleri okunamadı: sayfa ' + page;
+        $('raw').textContent = report;
+        renderPaint();
+        return false;
+      }
+      report += '\ntuş rengi sayfa ' + page + ': ' + hex(r.slice(0, 64));
+      const offset = page * 15 * 4;
+      data.set(r.slice(4, 64).slice(0, Math.max(0, data.length - offset)), offset);
+    }
+    paintData = data;
+    if (lastResults.lightBase && lastResults.lightBase[5] !== CUSTOM_EFFECT && !paintHasColors(data)) {
+      const saved = loadSavedPaint();
+      if (saved) paintData = saved;
+    }
+    paintDirty = false;
+    $('raw').textContent = report;
+    renderPaint();
+    return true;
+  }
+
+  function renderPaint() {
+    if (currentTab !== 'keycolor') return;
+    document.querySelectorAll('.key[data-position]').forEach(el => {
+      const cell = paintCells(el.dataset.position)[0];
+      const b = paintData ? paintData[cell * 4] : 0, g = paintData ? paintData[cell * 4 + 1] : 0, r = paintData ? paintData[cell * 4 + 2] : 0;
+      const on = paintData && paintData[cell * 4 + 3] === 255;
+      el.style.setProperty('--c', on ? 'rgb(' + r + ',' + g + ',' + b + ')' : 'transparent');
+    });
+    $('board').classList.add('lit');
+    if (paintData) $('keyColorLegend').textContent = paintDirty ? 'Kaydedilmemiş değişiklik var.' : 'Tuş renkleri klavyeden okundu.';
+    const effect = lastResults.lightBase ? lastResults.lightBase[5] : null;
+    $('paintHint').textContent = effect === CUSTOM_EFFECT ? 'L20 açık. Başka efekte geçince renkler kapanır, L20\'ye dönünce geri gelir.' : 'Renkler bu tarayıcıda profile göre saklanır. Kaydedince L20 açılır; başka efekte geçince renkler kapanır, L20\'ye dönünce geri gelir.';
+  }
+
+  function paintSet(id, rgb) {
+    for (const cell of paintCells(id)) {
+      const at = cell * 4;
+      // Son bayt tuşun özel renk kullanıp kullanmadığını söyler; temizlerken yalnızca bu kapatılır.
+      if (rgb) {
+        paintData[at] = rgb[2];
+        paintData[at + 1] = rgb[1];
+        paintData[at + 2] = rgb[0];
+      }
+      paintData[at + 3] = rgb ? 255 : 0;
+    }
+  }
+
+  const paintRgb = () => [1, 3, 5].map(i => parseInt($('paintColor').value.slice(i, i + 2), 16));
+
+  function paintKey(el) {
+    if (!paintData || busy) return;
+    const id = el.dataset.position;
+    const rgb = paintRgb();
+    const at = paintCells(id)[0] * 4;
+    const same = paintData[at + 3] === 255 && paintData[at] === rgb[2] && paintData[at + 1] === rgb[1] && paintData[at + 2] === rgb[0];
+    paintSet(id, same ? null : rgb);
+    paintDirty = true;
+    renderPaint();
+    updateTestControls();
+  }
+
+  function paintEveryKey(rgb) {
+    if (!paintData || busy) return;
+    if (!rgb) for (let at = 3; at < paintData.length; at += 4) paintData[at] = 0;
+    document.querySelectorAll('.key[data-position]').forEach(el => paintSet(el.dataset.position, rgb));
+    paintDirty = true;
+    renderPaint();
+    updateTestControls();
+  }
+
+  const PAINT_STORE = 'stug-key-colors';
+  const paintHasColors = data => {
+    for (let at = 3; at < data.length; at += 4) if (data[at] === 255) return true;
+    return false;
+  };
+
+  function profileNumber() {
+    return lastResults.profile ? lastResults.profile[3] : null;
+  }
+
+  function loadSavedPaint() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(PAINT_STORE)) || {};
+      const values = stored[profileNumber()];
+      return values && values.length === PAINT_ROWS * PAINT_COLS * 4 ? Uint8Array.from(values) : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function storeSavedPaint(data) {
+    try {
+      const stored = JSON.parse(localStorage.getItem(PAINT_STORE)) || {};
+      if (data && paintHasColors(data)) stored[profileNumber()] = Array.from(data);
+      else delete stored[profileNumber()];
+      localStorage.setItem(PAINT_STORE, JSON.stringify(stored));
+    } catch (error) {}
+  }
+
+  async function writePaintPages(data) {
+    for (let page = 0; page < PAINT_PAGES; page++) {
+      const packet = [0x05, 0x04, 0x00, page, ...data.slice(page * 60, page * 60 + 60)];
+      while (packet.length < 64) packet.push(0);
+      await exchange(device, packet, 800);
+      report += '\nrenk yazma: ' + hex(packet);
+    }
+    $('raw').textContent = report;
+  }
+
+  // L20 dışındaki efektlerde özel renkler kapatılır, L20'ye dönünce kayıttan geri yazılır.
+  async function syncPaintForEffect(mode) {
+    if (mode === CUSTOM_EFFECT) {
+      const saved = loadSavedPaint();
+      if (!saved) return;
+      await writePaintPages(saved);
+      paintData = saved;
+    } else {
+      if (!paintData || !paintHasColors(paintData)) {
+        await readPaint();
+        if (!paintData || !paintHasColors(paintData)) return;
+      }
+      storeSavedPaint(paintData);
+      const off = paintData.slice(0);
+      for (let at = 3; at < off.length; at += 4) off[at] = 0;
+      await writePaintPages(off);
+    }
+    paintDirty = false;
+  }
+
+  async function finishPaintSave(data) {
+    storeSavedPaint(data);
+    if (!paintHasColors(data)) return;
+    const base = await exchange(device, READ_COMMANDS.lightBase, 500);
+    if (base && base[0] === 5 && base[1] === 1 && base[5] !== CUSTOM_EFFECT) {
+      await exchange(device, buildLightWrite(base, 'mode', CUSTOM_EFFECT), 800);
+      await readAll();
+    }
+  }
+
+  async function savePaint() {
+    if (busy || !device || !paintData) return;
+    const data = paintData.slice(0);
+    busy = true;
+    updateTestControls();
+    try {
+      const outcome = await withDevice(async () => {
+        await writePaintPages(data);
+        // Klavye yazılan renkleri geri okumada gecikmeli gösterebiliyor, bu yüzden birkaç kez denenir.
+        for (let attempt = 0; attempt < 4; attempt++) {
+          await sleep(350);
+          const ok = await readPaint();
+          if (ok && paintData.every((value, i) => value === data[i])) {
+            await finishPaintSave(data);
+            return null;
+          }
+        }
+        // Geri okuma eski kaldıysa ekranda gönderilen renkler kalır.
+        paintData = data;
+        paintDirty = false;
+        await finishPaintSave(data);
+        renderPaint();
+        return 'stale';
+      });
+      if (outcome === 'stale') setStatus('Renkler gönderildi, ama klavye geri okumada eski değeri döndürdü. Klavyede doğru görünüyorsa sorun yok.', 'ok');
+      else if (outcome) setStatus(outcome, 'bad');
+      else setStatus('Tuş renkleri kaydedildi ve geri okunarak doğrulandı.', 'ok');
+    } catch (error) {
+      device = null;
+      setStatus('Yazma hatası: ' + error.message + '. Klavyeyi yeniden bağlayıp oku.', 'bad');
+    } finally {
+      busy = false;
+      renderPaint();
+      updateTestControls();
+    }
+  }
+
+  async function readTriggers() {
+    if (busy || !device) return;
+    busy = true;
+    updateTestControls();
+    setStatus('Tetik ayarları okunuyor.');
+    try {
+      const outcome = await withDevice(async () => {
+        const precision = await exchange(device, [0x02, 0x0c, 0x00], 500);
+        const lines = ['tetik hassasiyeti: ' + (precision ? hex(precision.slice(0, 8)) : 'yok')];
+        const data = {};
+        let total = 0;
+        for (let row = 0; row < FACTORY_MAP.length; row++) {
+          for (let col = 0; col < FACTORY_MAP[row].length; col++) {
+            if (!FACTORY_MAP[row][col]) continue;
+            const r = await exchange(device, [0x04, 0x01, row, col], 500);
+            if (!r || r[0] !== 4 || r[1] !== 1 || r[2] !== row || r[3] !== col) return 'Klavye satır ' + row + ', sütun ' + col + ' için tetik yanıtı vermedi. Sonucu kopyalayıp gönder.';
+            total++;
+            lines.push(row + ',' + col + ': ' + hex(r.slice(4, 27)));
+            data[row + ',' + col] = r.slice(0);
+          }
+        }
+        report += '\n\ntetik okuma\n' + lines.join('\n');
+        $('raw').textContent = report;
+        triggerData = data;
+        const previous = $('triggerTarget').value;
+        const options = [new Option('Tüm tuşlar', 'all'), new Option('W, A, S, D', 'wasd'), new Option('W, A, S, D dışındakiler', 'others')];
+        options.push(new Option('Çizimde seçilen tuşlar', 'custom'));
+        $('triggerTarget').replaceChildren(...options);
+        if (previous) $('triggerTarget').value = previous;
+        $('triggerEditor').hidden = false;
+        renderTriggerForm();
+        renderTriggerSelection();
+        renderTriggerSummary();
+        const profile = lastResults.profile ? PROFILES[lastResults.profile[3]] : null;
+        $('triggerHint').textContent = total + ' tuş okundu.' + (profile ? ' Etkin profil: ' + profile + '.' : '') + ' Profil değiştirirsen yeniden oku.';
+        return null;
+      });
+      if (outcome) setStatus(outcome, 'bad');
+      else setStatus('Tetik ayarları okundu. Hiçbir ayar değiştirilmedi.', 'ok');
+    } catch (error) {
+      device = null;
+      setStatus('Okuma hatası: ' + error.message + '. Klavyeyi yeniden bağlayıp oku.', 'bad');
+    } finally {
+      busy = false;
+      updateTestControls();
+    }
+  }
+
+  async function writeKey(row, col, code) {
+    const write = buildKeyWrite(row, col, code);
+    const response = await exchange(device, write, 800);
+    const after = await exchange(device, [0x03, 0x03, 0x00, row, col], 600);
+    report += '\n\ntuş yazma | gönderilen: ' + hex(write) + '\nyanıt: ' + (response ? hex(response) : 'yok') + '\ngeri okuma: ' + (after ? hex(after) : 'yok');
+    $('raw').textContent = report;
+    if (!after || after[0] !== 3 || after[1] !== 3 || after[5] !== (code & 255) || after[6] !== code >> 8) return false;
+    keyMap[row][col] = code;
+    return true;
+  }
+
+  async function changeKeys(work, doneText) {
+    if (busy || !device || !keyMap) return;
+    busy = true;
+    updateTestControls();
+    try {
+      const ok = await withDevice(work);
+      renderKeyMap();
+      if (ok) setStatus(doneText, 'ok');
+      else setStatus('Klavye tuş değerini almadı. Sonucu kopyalayıp gönder.', 'bad');
+    } catch (error) {
+      device = null;
+      setStatus('Yazma hatası: ' + error.message + '. Klavyeyi yeniden bağlayıp oku.', 'bad');
+    } finally {
+      busy = false;
+      updateTestControls();
+    }
+  }
+
+  async function applyCustomColor() {
+    if (busy || !device || !lastResults.palette) return;
+    const value = $('customColor').value;
+    const rgb = [1, 3, 5].map(i => parseInt(value.slice(i, i + 2), 16));
+    busy = true;
+    updateTestControls();
+    try {
+      const outcome = await withDevice(async () => {
+        const before = await exchange(device, READ_COMMANDS.palette);
+        if (!before || before[0] !== 5 || before[1] !== 1 || before[3] !== 1) return 'Yazmadan önceki okuma başarısız oldu, komut gönderilmedi.';
+        const write = buildPaletteWrite(before, rgb);
+        const response = await exchange(device, write);
+        const after = await exchange(device, READ_COMMANDS.palette);
+        if (!after) return 'Yazmadan sonra okuma yapılamadı. Sonucu kopyalayıp gönder.';
+        const same = Array.from({ length: 32 }, (_, n) => n + 4).every(i => {
+          const slot = Math.floor((i - 4) / 4), part = (i - 4) % 4;
+          if (slot === CUSTOM_SLOT && part < 3) return after[i] === [rgb[2], rgb[1], rgb[0]][part];
+          return after[i] === before[i];
+        });
+        let selectLog = '';
+        if (same) {
+          const base = await exchange(device, READ_COMMANDS.lightBase);
+          if (base && base[0] === 5 && base[1] === 1 && base[9] !== CUSTOM_SLOT) {
+            const select = buildLightWrite(base, 'color', CUSTOM_SLOT);
+            await exchange(device, select);
+            selectLog = '\nrenk seçimi: ' + hex(select);
+          }
+        }
+        await readAll();
+        report += '\n\nözel renk yazma | gönderilen: ' + hex(write) + '\nyanıt: ' + (response ? hex(response) : 'yok') + '\ngeri okuma: ' + hex(after) + selectLog;
+        $('raw').textContent = report;
+        if (!same) return 'Palet beklenenden farklı döndü. Sonucu kopyalayıp gönder.';
+        if (!lastResults.lightBase || lastResults.lightBase[9] !== CUSTOM_SLOT) return 'Renk kaydedildi ama seçilemedi. Sonucu kopyalayıp gönder.';
+        return null;
+      });
+      if (outcome) setStatus(outcome, 'bad');
+      else setStatus('Renk kaydedildi, seçildi ve klavyeden geri okunarak doğrulandı.', 'ok');
+    } catch (error) {
+      device = null;
+      setStatus('Yazma hatası: ' + error.message + '. Klavyeyi yeniden bağlayıp oku.', 'bad');
+    } finally {
+      busy = false;
+      updateTestControls();
+    }
+  }
+
+  async function applyLight(field, value) {
+    if (busy || !device || !lastResults.lightBase) return;
+    busy = true;
+    updateTestControls();
+    try {
+      const outcome = await withDevice(async () => {
+        const before = await exchange(device, READ_COMMANDS.lightBase);
+        if (!before || before[0] !== 5 || before[1] !== 1) return 'Yazmadan önceki okuma başarısız oldu, komut gönderilmedi.';
+        const write = buildLightWrite(before, field, value);
+        const response = await exchange(device, write);
+        const log = '\n\nışık yazma (' + field + ' = ' + value + ') | gönderilen: ' + hex(write) + '\nyanıt: ' + (response ? hex(response) : 'yok');
+        const after = await exchange(device, READ_COMMANDS.lightBase);
+        if (field === 'mode') await syncPaintForEffect(value);
+        await readAll();
+        report += log + '\ngeri okuma: ' + (after ? hex(after) : 'yok');
+        $('raw').textContent = report;
+        if (!after) return 'Yazmadan sonra okuma yapılamadı. Sonucu kopyalayıp gönder.';
+        const index = LIGHT_FIELDS[field].index;
+        if (after[index] !== value) return 'Klavye yeni değeri almadı. Sonucu kopyalayıp gönder.';
+        const others = [4, 5, 6, 7, 8, 9].every(i => i === index || after[i] === before[i]);
+        if (!others) return 'Ayar değişti ama başka bir değer de değişti. Sonucu kopyalayıp gönder.';
+        return null;
+      });
+      if (outcome) setStatus(outcome, 'bad');
+      else setStatus('Ayar uygulandı ve klavyeden geri okunarak doğrulandı.', 'ok');
+    } catch (error) {
+      device = null;
+      setStatus('Yazma hatası: ' + error.message + '. Klavyeyi yeniden bağlayıp oku.', 'bad');
+    } finally {
+      busy = false;
+      updateTestControls();
+    }
+  }
+
+  applyMacroLabels();
+  KEY_CODES.forEach((codes, row) => codes.forEach((code, index) => {
+    const position = KEY_POSITIONS[row][index];
+    if (code && position && FACTORY_MAP[position[0]][position[1]] < 0xf000) CODE_TO_HID[code] = FACTORY_MAP[position[0]][position[1]];
+  }));
+  drawBoard();
+  renderMacros();
+  setupKeyPresses();
+  drawRates(null, null);
+  $('run').addEventListener('click', run);
+  $('board').addEventListener('click', event => {
+    const el = event.target.closest('.key[data-position]');
+    if (!el) return;
+    event.stopPropagation();
+    if (currentTab === 'trigger') {
+      toggleTriggerKey(el);
+      return;
+    }
+    if (currentTab === 'keycolor') {
+      paintKey(el);
+      return;
+    }
+    if (menuKey === el) closeKeyMenu(false);
+    else openKeyMenu(el);
+  });
+  $('board').addEventListener('keydown', event => {
+    const el = event.target.closest('.key[data-position]');
+    if (el && keyMap && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault();
+      if (currentTab === 'trigger') toggleTriggerKey(el);
+      else if (currentTab === 'keycolor') paintKey(el);
+      else openKeyMenu(el);
+    }
+  });
+  document.addEventListener('click', event => {
+    if (!$('keyMenu').hidden && !event.target.closest('#keyMenu')) closeKeyMenu(false);
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !$('keyMenu').hidden) closeKeyMenu(true);
+  });
+  const TABS = { settings: ['tabSettings', 'panelSettings'], macro: ['tabMacro', 'panelMacro'], trigger: ['tabTrigger', 'panelTrigger'], keycolor: ['tabKeyColor', 'panelKeyColor'], shortcuts: ['tabShortcuts', 'panelShortcuts'] };
+  function selectTab(name) {
+    closeKeyMenu(false);
+    currentTab = name;
+    if (name === 'trigger') $('triggerDeckSlot').appendChild($('deck'));
+    if (name === 'settings') $('settingsDeckSlot').appendChild($('deck'));
+    if (name === 'macro') $('macroDeckSlot').appendChild($('deck'));
+    if (name === 'keycolor') $('keyColorDeckSlot').appendChild($('deck'));
+    renderPaint();
+    renderTriggerSelection();
+    for (const [key, [tab, panel]] of Object.entries(TABS)) {
+      const active = key === name;
+      $(panel).hidden = !active;
+      $(tab).setAttribute('aria-selected', String(active));
+      $(tab).tabIndex = active ? 0 : -1;
+    }
+  }
+  const tabNames = Object.keys(TABS);
+  tabNames.forEach((name, index) => {
+    const tab = $(TABS[name][0]);
+    tab.addEventListener('click', () => selectTab(name));
+    tab.addEventListener('keydown', event => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      const step = event.key === 'ArrowRight' ? 1 : -1;
+      const next = tabNames[(index + step + tabNames.length) % tabNames.length];
+      selectTab(next);
+      $(TABS[next][0]).focus();
+    });
+  });
+  $('triggerRead').addEventListener('click', readTriggers);
+  $('triggerApply').addEventListener('click', applyTriggers);
+  $('paintAll').addEventListener('click', () => paintEveryKey(paintRgb()));
+  $('paintClear').addEventListener('click', () => paintEveryKey(null));
+  $('paintSave').addEventListener('click', savePaint);
+  $('triggerFactory').addEventListener('click', restoreTriggerFactory);
+  $('triggerTarget').addEventListener('change', () => { renderTriggerForm(); renderTriggerSelection(); });
+  document.querySelectorAll('[data-trigger-mode]').forEach(el => el.addEventListener('click', () => {
+    triggerMode = Number(el.dataset.triggerMode);
+    renderTriggerMode();
+  }));
+  for (const name of ['normalPress', 'rtFirstTouch', 'rtPress', 'rtRelease', 'pressDead', 'releaseDead']) {
+    $(name).addEventListener('input', () => {
+      $(name + 'Out').textContent = Number($(name).value).toFixed(2) + ' mm';
+      updateRtWarning();
+    });
+  }
+  $('macroRecord').addEventListener('click', () => { if (recording) stopRecording(); else startRecording(false); });
+  $('macroAppend').addEventListener('click', () => startRecording(true));
+  $('macroCancel').addEventListener('click', () => $('macroDialog').close());
+  $('macroSave').addEventListener('click', saveMacro);
+  $('macroClear').addEventListener('click', clearMacro);
+  $('macroStandard').addEventListener('change', () => { renderMacroSteps(); updateTestControls(); });
+  $('macroStandardMs').addEventListener('input', renderMacroSteps);
+  document.querySelectorAll('.macro-type[data-type]').forEach(el => el.addEventListener('click', () => {
+    macroType = el.dataset.type;
+    renderMacroForm();
+  }));
+  $('macroDialog').addEventListener('cancel', event => { if (recording || busy) event.preventDefault(); });
+  $('macroDialog').addEventListener('close', () => { if (recording) stopRecording(); });
+  window.addEventListener('keydown', recordKey, true);
+  window.addEventListener('keyup', recordKey, true);
+  $('resetAllKeys').addEventListener('click', () => {
+    changeKeys(async () => {
+      for (const key of changedKeys()) {
+        if (!(await writeKey(key.row, key.col, key.factory))) return false;
+      }
+      return true;
+    }, 'Tüm tuşlar geri alındı.');
+  });
+  document.addEventListener('keydown', event => { $('lastKey').textContent = event.code || event.key; });
+  $('applyColor').addEventListener('click', applyCustomColor);
+  $('power').addEventListener('click', () => applyLight('open', lastResults.lightBase[4] ? 0 : 1));
+  for (const field of ['luminance', 'speed']) {
+    $(field).addEventListener('input', () => { $(field + 'Out').textContent = $(field).value; });
+    $(field).addEventListener('change', () => applyLight(field, Number($(field).value)));
+  }
+  $('copy').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(report);
+      setStatus('Sonuç kopyalandı.', 'ok');
+    } catch (error) {
+      setStatus('Otomatik kopyalanamadı. "Ham yanıtlar" bölümünü açıp metni elle kopyala.', 'bad');
+    }
+  });
+</script>
+</body>
+</html>
